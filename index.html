@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Чат">
 <link rel="manifest" href="manifest.json">
-<title>Чат + Звонки + Игры</title>
+<title>Чат + Игры</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; background: #0a0f1e; color: #e0e6f0;
@@ -101,55 +101,6 @@ button.full { width: 100%; margin-top: 10px; }
     font-family: inherit; font-size: 16px; outline: none; min-height: 46px;
     text-align: left; }
 #input-row button { flex: 0 0 auto; padding: 10px 16px; min-width: 54px; font-size: 18px; }
-#call-area { display: flex; flex-direction: column; flex: 1;
-    background: #0f1722; border: 1px solid #2a3a4a; border-radius: 12px;
-    overflow: hidden; min-height: 0; }
-#call-body { flex: 1; overflow-y: auto; padding: 14px; min-height: 0; }
-.peer-row { display: flex; align-items: center; justify-content: space-between;
-    padding: 12px; background: #1a2a3a; border-radius: 10px; margin-bottom: 8px; gap: 8px; }
-.peer-name { font-size: 15px; font-weight: bold; color: #c0e0ff; flex: 1; }
-.peer-row button { flex: 0 0 auto; min-height: 44px; padding: 8px 14px; font-size: 14px; min-width: 0; }
-.audio-btn { background: linear-gradient(135deg, #4ecdc4, #2a9d8f) !important; color: #0a0f1e !important; }
-.video-btn { background: linear-gradient(135deg, #a29bfe, #6c5ce7) !important; color: #fff !important; }
-.call-hint { color: #889; font-size: 13px; text-align: center; padding: 20px 10px; line-height: 1.6; }
-#call-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: #000; z-index: 500; display: none; flex-direction: column; }
-#call-overlay.visible { display: flex; }
-#call-overlay .videos { flex: 1; position: relative; background: #000; min-height: 0; }
-#remote-video { width: 100%; height: 100%; object-fit: cover; background: #000; }
-#local-video { position: absolute; top: 12px; right: 12px; width: 100px;
-    height: 140px; object-fit: cover; border-radius: 10px;
-    border: 2px solid #ffaa44; background: #000; z-index: 2; }
-#call-overlay.audio-mode #remote-video,
-#call-overlay.audio-mode #local-video { display: none; }
-#call-overlay.audio-mode .videos { display: flex; align-items: center;
-    justify-content: center; background: linear-gradient(135deg, #1a2a3a, #0a0f1e); }
-#call-overlay.audio-mode .videos::after {
-    content: '📞 Звонок'; color: #ffaa44; font-size: 24px; font-weight: bold;
-    animation: pulse 1.5s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-#call-info { position: absolute; top: 12px; left: 12px;
-    background: rgba(0,0,0,0.7); padding: 6px 12px; border-radius: 10px;
-    color: #e0e6f0; font-size: 13px; z-index: 3; }
-#call-info .name { color: #ffaa44; font-weight: bold; }
-#call-info .timer { font-family: monospace; margin-left: 8px; opacity: 0.85; }
-#call-controls { display: flex; justify-content: center; gap: 14px;
-    padding: 18px; background: #0a0f1e; flex-shrink: 0;
-    padding-bottom: max(env(safe-area-inset-bottom), 18px); }
-.call-ctrl { width: 62px; height: 62px; border-radius: 50%; border: none;
-    font-size: 24px; cursor: pointer; display: flex; align-items: center;
-    justify-content: center; background: #2a3a4a; color: #fff; flex: 0 0 auto; }
-.call-ctrl.hangup { background: linear-gradient(135deg, #ff4444, #aa2222); }
-.call-ctrl.muted, .call-ctrl.video-off { background: linear-gradient(135deg, #ffaa44, #ff7722); color: #0a0f1e; }
-#incoming-call { position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-    background: #1a2a3a; border: 2px solid #ffaa44; border-radius: 14px;
-    padding: 16px; z-index: 600; max-width: 340px; width: calc(100% - 40px);
-    display: none; }
-#incoming-call.visible { display: block; }
-#incoming-call .caller { font-size: 15px; color: #ffdd88; font-weight: bold; margin-bottom: 4px; }
-#incoming-call .type { font-size: 13px; color: #88aacc; margin-bottom: 12px; }
-#incoming-call .btn-row { display: flex; gap: 8px; }
-#incoming-call button { min-height: 46px; font-size: 14px; }
 #games-area { display: flex; flex-direction: column; flex: 1;
     background: #0f1722; border: 1px solid #2a3a4a; border-radius: 12px;
     overflow: hidden; min-height: 0; }
@@ -317,7 +268,7 @@ button.full { width: 100%; margin-top: 10px; }
 
 <div id="app">
     <h1>
-        ⚡ Чат + Звонки + Игры
+        ⚡ Чат + Игры
         <button type="button" id="install-btn" onclick="doInstall()">📥 Установить</button>
     </h1>
     <div id="status">Выберите действие</div>
@@ -364,7 +315,6 @@ button.full { width: 100%; margin-top: 10px; }
     <div id="main">
         <div id="tabs">
             <button type="button" class="tab-btn active" onclick="doTab('chat', this)">💬 Чат</button>
-            <button type="button" class="tab-btn" onclick="doTab('call', this)">📞 Звонки</button>
             <button type="button" class="tab-btn" onclick="doTab('games', this)">🎮 Игры</button>
         </div>
 
@@ -383,18 +333,6 @@ button.full { width: 100%; margin-top: 10px; }
             </div>
         </div>
 
-        <div class="tab-panel" id="tab-call">
-            <div id="call-area">
-                <div id="call-body">
-                    <div id="call-hint" class="call-hint">
-                        Здесь появятся участники комнаты.<br>
-                        Нажмите 📞 для аудио или 📹 для видео.
-                    </div>
-                    <div id="peers-list"></div>
-                </div>
-            </div>
-        </div>
-
         <div class="tab-panel" id="tab-games">
             <div id="games-area">
                 <div id="game-picker">
@@ -409,31 +347,6 @@ button.full { width: 100%; margin-top: 10px; }
                 <div id="loading-games">⏳ Загружаю игры...</div>
             </div>
         </div>
-    </div>
-</div>
-
-<div id="call-overlay">
-    <div class="videos">
-        <video id="remote-video" autoplay playsinline></video>
-        <video id="local-video" autoplay playsinline muted></video>
-        <div id="call-info">
-            <span class="name" id="call-peer-name">...</span>
-            <span class="timer" id="call-timer">00:00</span>
-        </div>
-    </div>
-    <div id="call-controls">
-        <button type="button" class="call-ctrl" id="btn-mute" onclick="doMute()">🎤</button>
-        <button type="button" class="call-ctrl" id="btn-video-toggle" onclick="doVideoToggle()">📹</button>
-        <button type="button" class="call-ctrl hangup" onclick="doHangup()">✕</button>
-    </div>
-</div>
-
-<div id="incoming-call">
-    <div class="caller" id="incoming-from">...</div>
-    <div class="type" id="incoming-type">Аудиозвонок</div>
-    <div class="btn-row">
-        <button type="button" class="secondary" onclick="doReject()">Отклонить</button>
-        <button type="button" onclick="doAccept()">Принять</button>
     </div>
 </div>
 
@@ -528,39 +441,37 @@ window.onerror = function(msg, url, line) {
     return false;
 };
 
-// ============================================================
-//  MQTT через WebSocket — не блокируется в РФ
-// ============================================================
 var BROKERS = [
     { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ' },
     { url: 'wss://broker.emqx.io:8084/mqtt', name: 'EMQX' },
     { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto' }
 ];
 
-var ICE_CONFIG = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun.cloudflare.com:3478' },
-        { urls: ['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],
-          username: 'openrelayproject', credential: 'openrelayproject' }
-    ],
-    iceCandidatePoolSize: 6
-};
-
 var WORDS = ['moon','star','sun','fox','wolf','cat','bird','fire','ice','leaf','tree','rock','wave','snow','rain','wind','gold','blue','red','cyan','mint','kite','bell','lion','tiger','bear','fish','rose','lily','fern','pond','lake','river','peak','dune','sand','stone','flame','ember','cloud','storm'];
 
 var mqttClient = null;
-var brokerIndex = 0;
-var topicMsg = null, topicPresence = null, topicSignal = null;
+var topicMsg = null, topicPresence = null;
 var roomCode = null, myName = 'Аноним';
 var myId = 'id_' + Math.random().toString(36).slice(2, 10);
 var heartbeatTimer = null, cleanupTimer = null;
-var peers = {}, seenIds = {};
+var peers = {};
+var currentGame = null, gamesLoaded = false;
 
-var pc = null, localStream = null, remoteStream = null;
-var callPeerId = null, callPeerName = null, callIsVideo = false;
-var callState = 'idle', pendingIce = [], callTimerInterval = null, callStartedAt = 0;
-var pendingOffer = null, currentGame = null, gamesLoaded = false;
+// === PWA: автоматическая установка ===
+var deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    var btn = document.getElementById('install-btn');
+    if (btn) btn.textContent = '📥 Установить сейчас';
+});
+
+window.addEventListener('appinstalled', function() {
+    var btn = document.getElementById('install-btn');
+    if (btn) btn.style.display = 'none';
+    deferredPrompt = null;
+});
 
 function $(id){return document.getElementById(id);}
 function setStatus(t,c){var e=$('status');if(!e)return;e.innerHTML=t;e.className=c||'';}
@@ -583,12 +494,7 @@ function fbCopy(t,res){try{var ta=document.createElement('textarea');ta.value=t;
     var ok=document.execCommand('copy');document.body.removeChild(ta);res(ok);}catch(e){res(false);}}
 function flash(btn,text){if(!btn)return;var o=btn.innerHTML;btn.innerHTML=text;
     setTimeout(function(){btn.innerHTML=o;},1500);}
-function fmtTime(sec){var m=Math.floor(sec/60).toString(),s=(sec%60).toString();
-    if(m.length<2)m='0'+m;if(s.length<2)s='0'+s;return m+':'+s;}
 
-// ============================================================
-//  MQTT: подключение к брокеру
-// ============================================================
 function connectBroker(attempt) {
     attempt = attempt || 0;
     if (attempt >= BROKERS.length) {
@@ -622,7 +528,6 @@ function connectBroker(attempt) {
     mqttClient.on('connect', function() {
         connected = true;
         clearTimeout(timeout);
-        brokerIndex = attempt;
         setStatus('🟢 Подключено (' + broker.name + ')', 'online');
         subscribeAll();
     });
@@ -638,10 +543,6 @@ function connectBroker(attempt) {
     mqttClient.on('message', function(topic, payload) {
         try {
             var data = JSON.parse(payload.toString());
-            var key = (data._k || '') + '_' + (data._t || '');
-            if (data._k && seenIds[key]) return;
-            if (data._k) seenIds[key] = true;
-
             if (topic === topicMsg) {
                 if (data.id === myId) return;
                 addMsg(data.text, data.name, false);
@@ -651,8 +552,6 @@ function connectBroker(attempt) {
                 peers[data.id] = {name: data.name, lastSeen: Date.now()};
                 renderParts();
                 if (isNew && data.kind === 'hello') addSys(data.name + ' присоединился');
-            } else if (topic === topicSignal) {
-                handleIncoming(data);
             }
         } catch(e) {}
     });
@@ -662,17 +561,10 @@ function subscribeAll() {
     var base = normTopic(roomCode);
     topicMsg = base + '/msg';
     topicPresence = base + '/presence';
-    topicSignal = base + '/signal';
 
-    mqttClient.subscribe([topicMsg, topicPresence, topicSignal], {qos: 0}, function(err) {
-        if (err) {
-            showError('Ошибка подписки');
-            return;
-        }
-        // Приветствие
+    mqttClient.subscribe([topicMsg, topicPresence], {qos: 0}, function(err) {
+        if (err) { showError('Ошибка подписки'); return; }
         publishPresence('hello');
-
-        // Heartbeat — обновление присутствия
         if (heartbeatTimer) clearInterval(heartbeatTimer);
         heartbeatTimer = setInterval(function(){ publishPresence('presence'); }, 15000);
         if (cleanupTimer) clearInterval(cleanupTimer);
@@ -687,15 +579,6 @@ function publishPresence(kind) {
     }));
 }
 
-function publishSignal(data) {
-    if (!mqttClient || !mqttClient.connected) return;
-    data._t = Date.now();
-    mqttClient.publish(topicSignal, JSON.stringify(data));
-}
-
-// ============================================================
-//  ЧАТ
-// ============================================================
 function addSys(t){var d=document.createElement('div');d.className='msg sys';d.textContent=t;
     $('messages').appendChild(d);$('messages').scrollTop=$('messages').scrollHeight;}
 function addMsg(t,sender,me){var d=document.createElement('div');
@@ -704,43 +587,16 @@ function addMsg(t,sender,me){var d=document.createElement('div');
     d.appendChild(document.createTextNode(t));$('messages').appendChild(d);
     $('messages').scrollTop=$('messages').scrollHeight;}
 
-// ============================================================
-//  УЧАСТНИКИ
-// ============================================================
 function renderParts(){var box=$('participants');box.innerHTML='';
     var me=document.createElement('span');me.className='participant me';
     me.textContent=myName+' (вы)';box.appendChild(me);
     for(var id in peers){var s=document.createElement('span');s.className='participant';
-        s.textContent=peers[id].name;box.appendChild(s);}
-    renderPeerList();}
-function renderPeerList(){var list=$('peers-list');if(!list)return;list.innerHTML='';
-    var cnt=0;for(var id in peers)cnt++;
-    if(cnt===0){$('call-hint').style.display='block';return;}
-    $('call-hint').style.display='none';
-    for(var id in peers){(function(peerId,p){var row=document.createElement('div');row.className='peer-row';
-        var n=document.createElement('div');n.className='peer-name';n.textContent=p.name;row.appendChild(n);
-        var ab=document.createElement('button');ab.type='button';ab.className='audio-btn';ab.textContent='📞';
-        ab.onclick=function(){startCall(peerId,p.name,false);};row.appendChild(ab);
-        var vb=document.createElement('button');vb.type='button';vb.className='video-btn';vb.textContent='📹';
-        vb.onclick=function(){startCall(peerId,p.name,true);};row.appendChild(vb);
-        list.appendChild(row);})(id,peers[id]);}}
+        s.textContent=peers[id].name;box.appendChild(s);}}
 function cleanPeers(){var now=Date.now(),ch=false;
     for(var id in peers){if(now-peers[id].lastSeen>40000){
         var nm=peers[id].name;delete peers[id];ch=true;addSys(nm+' отключился');}}
     if(ch)renderParts();}
 
-function handleIncoming(d){
-    if(!d||d.id===myId)return;
-    if(d.to&&d.to!==myId)return;
-    if(d.kind==='call-request')incCall(d);
-    else if(d.kind==='call-response')respCall(d);
-    else if(d.kind==='call-ice')remIce(d);
-    else if(d.kind==='call-end')remHangup(d);
-}
-
-// ============================================================
-//  UI
-// ============================================================
 function doShowCreate(){$('role-picker').style.display='none';$('step-create').style.display='block';
     var c=genCode();$('room-code').textContent=c;roomCode=c;}
 function doShowJoin(){$('role-picker').style.display='none';$('step-join').style.display='block';}
@@ -824,97 +680,7 @@ function resizeGames(){if(currentGame==='snake'){var c=$('snake-canvas');
         c2.style.width=w+'px';c2.style.height=h+'px';}}}
 window.addEventListener('resize',resizeGames);
 
-// ============================================================
-//  ЗВОНКИ
-// ============================================================
-function newPC(){var c=new RTCPeerConnection(ICE_CONFIG);
-    c.onicecandidate=function(e){if(e.candidate&&callPeerId)
-        publishSignal({kind:'call-ice',id:myId,name:myName,to:callPeerId,candidate:e.candidate});};
-    c.ontrack=function(e){if(!remoteStream)remoteStream=new MediaStream();
-        remoteStream.addTrack(e.track);var rv=$('remote-video');
-        if(rv.srcObject!==remoteStream)rv.srcObject=remoteStream;};
-    c.onconnectionstatechange=function(){
-        if(c.connectionState==='failed'){addSys('⚠️ Соединение не удалось.');endCall(false);}
-        else if(c.connectionState==='connected')startTimer();
-        else if(c.connectionState==='disconnected')addSys('Связь потеряна.');};
-    return c;}
-function getMedia(v){return navigator.mediaDevices.getUserMedia({audio:true,
-    video:v?{width:{ideal:640},height:{ideal:480}}:false});}
-function startCall(pid,pn,v){if(callState!=='idle'){addSys('Уже идёт звонок.');return;}
-    callPeerId=pid;callPeerName=pn;callIsVideo=v;callState='calling';
-    getMedia(v).then(function(st){localStream=st;pc=newPC();
-        st.getTracks().forEach(function(t){pc.addTrack(t,st);});return pc.createOffer();})
-    .then(function(o){return pc.setLocalDescription(o).then(function(){return o;});})
-    .then(function(o){publishSignal({kind:'call-request',id:myId,name:myName,to:pid,video:v,sdp:o});
-        showOverlay(pn,v);setStatus('📞 Идёт вызов...','waiting');})
-    .catch(function(e){addSys('❌ Нет доступа: '+e.message);callState='idle';callPeerId=null;});}
-function incCall(d){if(callState!=='idle'){publishSignal({kind:'call-response',id:myId,name:myName,
-    to:d.id,accept:false,reason:'busy'});return;}
-    callPeerId=d.id;callPeerName=d.name;callIsVideo=!!d.video;callState='incoming';
-    $('incoming-from').textContent=d.name+' звонит...';
-    $('incoming-type').textContent=callIsVideo?'📹 Видеозвонок':'📞 Аудиозвонок';
-    $('incoming-call').classList.add('visible');pendingOffer=d.sdp;}
-function doAccept(){if(!pendingOffer)return;$('incoming-call').classList.remove('visible');
-    getMedia(callIsVideo).then(function(st){localStream=st;pc=newPC();
-        st.getTracks().forEach(function(t){pc.addTrack(t,st);});
-        return pc.setRemoteDescription(new RTCSessionDescription(pendingOffer));})
-    .then(function(){return Promise.all(pendingIce.map(function(c){
-        return pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});}));})
-    .then(function(){pendingIce=[];return pc.createAnswer();})
-    .then(function(a){return pc.setLocalDescription(a).then(function(){return a;});})
-    .then(function(a){publishSignal({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:true,sdp:a});
-        callState='active';showOverlay(callPeerName,callIsVideo);pendingOffer=null;})
-    .catch(function(e){addSys('❌ '+e.message);
-        publishSignal({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:false,reason:'error'});
-        callState='idle';callPeerId=null;});}
-function doReject(){$('incoming-call').classList.remove('visible');
-    if(callPeerId)publishSignal({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:false,reason:'rejected'});
-    callState='idle';callPeerId=null;pendingOffer=null;}
-function respCall(d){if(d.to!==myId||callState!=='calling')return;
-    if(!d.accept){addSys('❌ Звонок отклонён.');endCall(false);return;}
-    pc.setRemoteDescription(new RTCSessionDescription(d.sdp)).then(function(){
-        return Promise.all(pendingIce.map(function(c){
-            return pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});}));})
-    .then(function(){pendingIce=[];callState='active';setStatus('🟢 Звонок активен','online');})
-    .catch(function(e){addSys('Ошибка: '+e.message);endCall(false);});}
-function remIce(d){if(!pc)return;var c=d.candidate;if(!c)return;
-    if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});
-    else pendingIce.push(c);}
-function remHangup(d){if(d.to!==myId||callState==='idle')return;
-    addSys('📴 Собеседник завершил звонок.');endCall(false);}
-function showOverlay(pn,v){$('call-peer-name').textContent=pn;$('call-timer').textContent='00:00';
-    var o=$('call-overlay');o.classList.add('visible');
-    if(v)o.classList.remove('audio-mode');else o.classList.add('audio-mode');
-    $('btn-video-toggle').style.display=v?'':'none';
-    var lv=$('local-video');if(localStream)lv.srcObject=localStream;
-    setTimeout(function(){var rv=$('remote-video');
-        if(rv&&rv.srcObject)rv.play().catch(function(){});
-        if(lv&&lv.srcObject)lv.play().catch(function(){});},200);}
-function startTimer(){if(callTimerInterval)return;callStartedAt=Date.now();
-    callTimerInterval=setInterval(function(){
-        $('call-timer').textContent=fmtTime(Math.floor((Date.now()-callStartedAt)/1000));},500);}
-function endCall(notify){if(notify&&callPeerId)publishSignal({kind:'call-end',id:myId,name:myName,to:callPeerId});
-    if(pc){try{pc.close();}catch(e){}pc=null;}
-    if(localStream){localStream.getTracks().forEach(function(t){t.stop();});localStream=null;}
-    remoteStream=null;pendingIce=[];
-    $('remote-video').srcObject=null;$('local-video').srcObject=null;
-    $('call-overlay').classList.remove('visible');$('incoming-call').classList.remove('visible');
-    if(callTimerInterval){clearInterval(callTimerInterval);callTimerInterval=null;}
-    callPeerId=null;callPeerName=null;callState='idle';pendingOffer=null;
-    setStatus('🟢 Подключено','online');}
-function doHangup(){endCall(true);}
-function doMute(){if(!localStream)return;var t=localStream.getAudioTracks()[0];if(!t)return;
-    t.enabled=!t.enabled;var b=$('btn-mute');
-    if(t.enabled){b.classList.remove('muted');b.textContent='🎤';}
-    else{b.classList.add('muted');b.textContent='🔇';}}
-function doVideoToggle(){if(!localStream)return;var t=localStream.getVideoTracks()[0];if(!t)return;
-    t.enabled=!t.enabled;var b=$('btn-video-toggle');
-    if(t.enabled){b.classList.remove('video-off');b.textContent='📹';}
-    else{b.classList.add('video-off');b.textContent='🚫';}}
-
-// ============================================================
-//  Модалка установки
-// ============================================================
+// === УСТАНОВКА ===
 function detectOS() {
     var ua = navigator.userAgent || '';
     var platform = navigator.platform || '';
@@ -934,9 +700,36 @@ function showInstallTab(os) {
     }
 }
 function doInstall() {
+    // Android / Windows Chrome / Edge — системное окно установки в 1 клик
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choice) {
+            if (choice.outcome === 'accepted') {
+                showError('✅ Установлено! Ищите иконку на рабочем столе.');
+            }
+            deferredPrompt = null;
+        });
+        return;
+    }
+
+    // iOS Safari — только инструкция, иначе никак
+    var os = detectOS();
+    if (os === 'iphone') {
+        document.getElementById('ios-install').classList.add('visible');
+        return;
+    }
+
+    // Уже установлено?
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+        showError('Приложение уже установлено');
+        return;
+    }
+
+    // Android без события — открываем подсказку
     var modal = document.getElementById('install-modal');
     modal.classList.add('visible');
-    showInstallTab(detectOS());
+    showInstallTab(os);
 }
 function closeInstallModal() {
     document.getElementById('install-modal').classList.remove('visible');
