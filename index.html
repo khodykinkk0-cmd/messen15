@@ -79,11 +79,11 @@ button.full { width: 100%; margin-top: 10px; }
     color: #0a0f1e; border: none; border-radius: 8px; padding: 6px 12px;
     font-size: 12px; font-weight: bold; cursor: pointer; font-family: inherit;
     min-height: 34px; flex: 0 0 auto; }
-.sound-btn { background: transparent;
+.sound-btn, .clear-btn { background: transparent;
     color: #88aacc; border: none; font-size: 20px; cursor: pointer;
     padding: 4px 8px; min-height: 34px; width: auto; flex: 0 0 auto;
     font-family: inherit; }
-.sound-btn:active { transform: scale(0.94); }
+.sound-btn:active, .clear-btn:active { transform: scale(0.94); }
 #participants { display: flex; gap: 6px; padding: 6px 12px; background: #0a0f1e;
     border-bottom: 1px solid #2a3a4a; overflow-x: auto; flex-shrink: 0; }
 .participant { display: inline-flex; align-items: center; padding: 3px 10px;
@@ -98,6 +98,9 @@ button.full { width: 100%; margin-top: 10px; }
 .msg.sys { background: transparent; color: #668; text-align: center; font-size: 12px;
     max-width: 100%; margin: 6px auto; }
 .msg .sender { font-size: 11px; opacity: 0.7; display: block; margin-bottom: 3px; font-weight: bold; }
+.msg .time { font-size: 10px; opacity: 0.5; float: right; margin-left: 8px; margin-top: 4px; }
+.day-sep { color: #668; text-align: center; font-size: 11px; margin: 12px auto 6px;
+    padding: 2px 12px; background: #1a2a3a; border-radius: 12px; max-width: 100%; }
 #input-row { display: flex; border-top: 1px solid #2a3a4a; padding: 8px; gap: 8px;
     background: #0a0f1e; flex-shrink: 0;
     padding-bottom: max(env(safe-area-inset-bottom), 8px); }
@@ -146,10 +149,11 @@ button.full { width: 100%; margin-top: 10px; }
     transition: 0.2s; min-height: 0; }
 .mem-card.flipped { background: #ffaa44; border-color: #ffdd88; }
 .mem-card.matched { background: #0a3a1a; border-color: #44ff88; opacity: 0.6; cursor: default; }
-#invite-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+#invite-modal, #confirm-modal, #sound-settings-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.85); z-index: 200; align-items: center;
     justify-content: center; padding: 20px; }
-#invite-modal.visible { display: flex; }
+#sound-settings-modal { z-index: 300; overflow-y: auto; }
+#invite-modal.visible, #confirm-modal.visible, #sound-settings-modal.visible { display: flex; }
 .invite-card { background: #0f1722; border: 1px solid #2a3a4a; border-radius: 16px;
     padding: 20px; max-width: 420px; width: 100%; }
 .invite-card h3 { color: #ffaa44; font-size: 16px; margin-bottom: 12px; text-align: center; }
@@ -265,6 +269,47 @@ button.full { width: 100%; margin-top: 10px; }
     cursor: pointer;
     min-height: 48px;
 }
+
+/* Кнопки выбора звука */
+.sound-choice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: #1a2a3a;
+    color: #e0e6f0;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: normal;
+    cursor: pointer;
+    text-align: left;
+    min-height: 46px;
+    margin-bottom: 8px;
+    flex: none;
+}
+.sound-choice.active {
+    border-color: #ffaa44;
+    background: #2a3a4a;
+}
+.sound-choice .icon-play {
+    font-size: 18px;
+    color: #88aacc;
+    flex-shrink: 0;
+}
+.sound-choice.active .icon-play { color: #ffaa44; }
+.sound-choice .title {
+    flex: 1;
+    color: #e0e6f0;
+}
+.sound-choice .sub {
+    font-size: 11px;
+    color: #889;
+    display: block;
+    margin-top: 2px;
+}
 </style>
 </head>
 <body>
@@ -327,8 +372,10 @@ button.full { width: 100%; margin-top: 10px; }
             <div id="chat-area">
                 <div id="chat-header">
                     <span>Комната: <span class="room-code" id="header-code">---</span></span>
-                    <div style="display:flex; gap:6px; align-items:center;">
+                    <div style="display:flex; gap:4px; align-items:center;">
                         <button type="button" class="sound-btn" id="sound-btn" onclick="toggleSound()">🔊</button>
+                        <button type="button" class="sound-btn" onclick="openSoundSettings()" title="Настройки звука">⚙️</button>
+                        <button type="button" class="clear-btn" onclick="confirmClearHistory()" title="Очистить историю">🗑️</button>
                         <button type="button" class="invite-btn" onclick="doInvite()">+ Пригласить</button>
                     </div>
                 </div>
@@ -367,6 +414,62 @@ button.full { width: 100%; margin-top: 10px; }
             <button type="button" onclick="doShareModal()" class="secondary">📤 Поделиться</button>
         </div>
         <button type="button" onclick="doCloseModal()" class="close-btn">Закрыть</button>
+    </div>
+</div>
+
+<div id="confirm-modal">
+    <div class="invite-card">
+        <h3>Очистить историю?</h3>
+        <p style="text-align:center;color:#c0e0ff;font-size:14px;line-height:1.5;margin-bottom:14px;">
+            Все сообщения в этой комнате будут удалены с этого устройства. Это действие нельзя отменить.
+        </p>
+        <div class="btn-row">
+            <button type="button" class="secondary" onclick="closeConfirm()">Отмена</button>
+            <button type="button" onclick="doClearHistory()">Очистить</button>
+        </div>
+    </div>
+</div>
+
+<div id="sound-settings-modal">
+    <div class="invite-card">
+        <h3>🎵 Звук уведомления</h3>
+        <p style="text-align:center;color:#889;font-size:12px;margin-bottom:14px;">
+            Нажмите на вариант, чтобы услышать и выбрать
+        </p>
+
+        <button type="button" class="sound-choice" data-type="telegram" onclick="setSoundType('telegram')">
+            <span class="icon-play">▶</span>
+            <span class="title">
+                Динь-дон
+                <span class="sub">Похож на уведомление Telegram</span>
+            </span>
+        </button>
+
+        <button type="button" class="sound-choice" data-type="classic" onclick="setSoundType('classic')">
+            <span class="icon-play">▶</span>
+            <span class="title">
+                Классика
+                <span class="sub">Две ноты — восходящая гамма</span>
+            </span>
+        </button>
+
+        <button type="button" class="sound-choice" data-type="soft" onclick="setSoundType('soft')">
+            <span class="icon-play">▶</span>
+            <span class="title">
+                Мягкий
+                <span class="sub">Одна нота с плавным затуханием</span>
+            </span>
+        </button>
+
+        <button type="button" class="sound-choice" data-type="double" onclick="setSoundType('double')">
+            <span class="icon-play">▶</span>
+            <span class="title">
+                Двойной
+                <span class="sub">Два быстрых сигнала подряд</span>
+            </span>
+        </button>
+
+        <button type="button" class="close-btn" onclick="closeSoundSettings()" style="width:100%;margin-top:12px;background:#2a3a4a;color:#c0e0ff;border:none;border-radius:10px;padding:14px;font-family:inherit;font-weight:bold;font-size:15px;cursor:pointer;min-height:48px;">Готово</button>
     </div>
 </div>
 
@@ -501,12 +604,116 @@ function fbCopy(t,res){try{var ta=document.createElement('textarea');ta.value=t;
     var ok=document.execCommand('copy');document.body.removeChild(ta);res(ok);}catch(e){res(false);}}
 function flash(btn,text){if(!btn)return;var o=btn.innerHTML;btn.innerHTML=text;
     setTimeout(function(){btn.innerHTML=o;},1500);}
+function fmtTime(ts){
+    var d = new Date(ts);
+    var h = d.getHours().toString(); if (h.length<2) h='0'+h;
+    var m = d.getMinutes().toString(); if (m.length<2) m='0'+m;
+    return h + ':' + m;
+}
+function fmtDay(ts){
+    var d = new Date(ts);
+    var today = new Date();
+    var yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'Сегодня';
+    if (d.toDateString() === yesterday.toDateString()) return 'Вчера';
+    var dd = d.getDate().toString(); if (dd.length<2) dd='0'+dd;
+    var mm = (d.getMonth()+1).toString(); if (mm.length<2) mm='0'+mm;
+    return dd + '.' + mm + '.' + d.getFullYear();
+}
 
 // ============================================================
-//  ЗВУК УВЕДОМЛЕНИЯ (Web Audio API)
+//  ИСТОРИЯ (localStorage)
+// ============================================================
+var HISTORY_KEY = null;
+var HISTORY_LIMIT = 200;
+var historyCache = [];
+var lastRenderedDay = null;
+
+function loadHistory() {
+    if (!HISTORY_KEY) return [];
+    try {
+        var raw = localStorage.getItem(HISTORY_KEY);
+        if (!raw) return [];
+        var arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return [];
+        return arr;
+    } catch (e) { return []; }
+}
+function saveHistory() {
+    if (!HISTORY_KEY) return;
+    try {
+        if (historyCache.length > HISTORY_LIMIT) {
+            historyCache = historyCache.slice(-HISTORY_LIMIT);
+        }
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(historyCache));
+    } catch (e) {
+        try {
+            historyCache = historyCache.slice(-Math.floor(HISTORY_LIMIT/2));
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(historyCache));
+        } catch (e2) {}
+    }
+}
+function addToHistory(entry) {
+    entry.t = entry.t || Date.now();
+    historyCache.push(entry);
+    if (historyCache.length > HISTORY_LIMIT) {
+        historyCache = historyCache.slice(-HISTORY_LIMIT);
+    }
+    saveHistory();
+}
+function clearHistory() {
+    if (!HISTORY_KEY) return;
+    historyCache = [];
+    try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
+    $('messages').innerHTML = '';
+    lastRenderedDay = null;
+}
+function confirmClearHistory() {
+    $('confirm-modal').classList.add('visible');
+}
+function closeConfirm() {
+    $('confirm-modal').classList.remove('visible');
+}
+function doClearHistory() {
+    clearHistory();
+    closeConfirm();
+    addSys('История очищена');
+}
+function renderStoredHistory() {
+    var box = $('messages');
+    box.innerHTML = '';
+    lastRenderedDay = null;
+    if (!historyCache.length) return;
+    for (var i = 0; i < historyCache.length; i++) {
+        var e = historyCache[i];
+        maybeDaySeparator(e.t);
+        if (e.kind === 'sys') {
+            addSys(e.text, true);
+        } else if (e.kind === 'msg') {
+            addMsg(e.text, e.isMe ? null : e.name, e.isMe, e.t, true);
+        }
+    }
+    setTimeout(function(){ box.scrollTop = box.scrollHeight; }, 50);
+}
+function maybeDaySeparator(ts) {
+    var day = fmtDay(ts);
+    if (day !== lastRenderedDay) {
+        lastRenderedDay = day;
+        var d = document.createElement('div');
+        d.className = 'day-sep';
+        d.textContent = day;
+        $('messages').appendChild(d);
+    }
+}
+
+// ============================================================
+//  ЗВУК УВЕДОМЛЕНИЯ (4 варианта)
 // ============================================================
 var audioCtx = null;
 var soundEnabled = localStorage.getItem('chat-sound') !== 'off';
+var SOUND_TYPES = ['classic', 'telegram', 'soft', 'double'];
+var soundType = localStorage.getItem('chat-sound-type') || 'telegram';
+if (SOUND_TYPES.indexOf(soundType) === -1) soundType = 'telegram';
 
 function initAudio() {
     if (audioCtx) {
@@ -544,9 +751,60 @@ function playNotify() {
     if (audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
     try {
         var now = audioCtx.currentTime;
-        playBeep(880, now, 0.10, 0.15);
-        playBeep(1318.51, now + 0.10, 0.15, 0.12);
+        if (soundType === 'classic') {
+            playBeep(880, now, 0.10, 0.15);
+            playBeep(1318.51, now + 0.10, 0.15, 0.12);
+        } else if (soundType === 'telegram') {
+            playBeep(1318.51, now, 0.08, 0.14);
+            playBeep(1046.50, now + 0.08, 0.08, 0.13);
+            playBeep(1567.98, now + 0.16, 0.14, 0.12);
+        } else if (soundType === 'soft') {
+            var osc = audioCtx.createOscillator();
+            var gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 987.77;
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } else if (soundType === 'double') {
+            playBeep(1174.66, now, 0.06, 0.16);
+            playBeep(1174.66, now + 0.09, 0.09, 0.14);
+        }
     } catch (e) {}
+}
+
+function testSound(type) {
+    var oldType = soundType;
+    soundType = type;
+    playNotify();
+    soundType = oldType;
+}
+
+function setSoundType(type) {
+    soundType = type;
+    localStorage.setItem('chat-sound-type', type);
+    testSound(type);
+    updateSoundButtons();
+}
+
+function updateSoundButtons() {
+    var btns = document.querySelectorAll('.sound-choice');
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.toggle('active', btns[i].dataset.type === soundType);
+    }
+}
+
+function openSoundSettings() {
+    initAudio();
+    document.getElementById('sound-settings-modal').classList.add('visible');
+    updateSoundButtons();
+}
+function closeSoundSettings() {
+    document.getElementById('sound-settings-modal').classList.remove('visible');
 }
 
 function toggleSound() {
@@ -558,7 +816,7 @@ function toggleSound() {
 }
 
 // ============================================================
-//  МИГАНИЕ ЗАГОЛОВКА ВКЛАДКИ
+//  МИГАНИЕ ЗАГОЛОВКА
 // ============================================================
 var originalTitle = document.title;
 var titleTimer = null;
@@ -636,7 +894,8 @@ function connectBroker(attempt) {
             var data = JSON.parse(payload.toString());
             if (topic === topicMsg) {
                 if (data.id === myId) return;
-                addMsg(data.text, data.name, false);
+                addMsg(data.text, data.name, false, data._t);
+                addToHistory({kind:'msg', name:data.name, text:data.text, isMe:false, t:data._t || Date.now()});
                 playNotify();
                 flashTitle(data.name + ': ' + data.text);
             } else if (topic === topicPresence) {
@@ -672,14 +931,41 @@ function publishPresence(kind) {
     }));
 }
 
-function addSys(t){var d=document.createElement('div');d.className='msg sys';d.textContent=t;
-    $('messages').appendChild(d);$('messages').scrollTop=$('messages').scrollHeight;}
-function addMsg(t,sender,me){var d=document.createElement('div');
+// ============================================================
+//  СООБЩЕНИЯ
+// ============================================================
+function addSys(t, skipHistory){
+    maybeDaySeparator(Date.now());
+    var d = document.createElement('div'); d.className='msg sys'; d.textContent=t;
+    $('messages').appendChild(d);
+    $('messages').scrollTop=$('messages').scrollHeight;
+    if (!skipHistory) addToHistory({kind:'sys', text:t, t:Date.now()});
+}
+function addMsg(t, sender, me, time, skipHistory){
+    maybeDaySeparator(time || Date.now());
+    var d = document.createElement('div');
     d.className='msg '+(me?'me':'them');
-    if(!me&&sender){var s=document.createElement('span');s.className='sender';s.textContent=sender;d.appendChild(s);}
-    d.appendChild(document.createTextNode(t));$('messages').appendChild(d);
-    $('messages').scrollTop=$('messages').scrollHeight;}
+    if(!me && sender){
+        var s=document.createElement('span'); s.className='sender'; s.textContent=sender;
+        d.appendChild(s);
+    }
+    var span = document.createElement('span');
+    span.textContent = t;
+    d.appendChild(span);
+    var tm = document.createElement('span');
+    tm.className = 'time';
+    tm.textContent = fmtTime(time || Date.now());
+    d.appendChild(tm);
+    $('messages').appendChild(d);
+    $('messages').scrollTop=$('messages').scrollHeight;
+    if (!skipHistory) {
+        addToHistory({kind:'msg', name: me ? myName : sender, text:t, isMe: !!me, t: time || Date.now()});
+    }
+}
 
+// ============================================================
+//  УЧАСТНИКИ
+// ============================================================
 function renderParts(){var box=$('participants');box.innerHTML='';
     var me=document.createElement('span');me.className='participant me';
     me.textContent=myName+' (вы)';box.appendChild(me);
@@ -700,6 +986,10 @@ function doBack(){
     if(heartbeatTimer)clearInterval(heartbeatTimer);
     if(cleanupTimer)clearInterval(cleanupTimer);
     peers={};
+    $('messages').innerHTML = '';
+    lastRenderedDay = null;
+    historyCache = [];
+    HISTORY_KEY = null;
     $('step-join').style.display='none';$('step-create').style.display='none';
     $('role-picker').style.display='block';setStatus('Выберите действие');
 }
@@ -725,17 +1015,26 @@ function startRoom(c,n){
     document.querySelector('h1').style.display='none';
     $('main').classList.add('visible');
     renderParts();
-    addSys('Вы вошли в комнату. Подключение...');
+
+    HISTORY_KEY = 'chat-history-' + normTopic(c);
+    historyCache = loadHistory();
+    if (historyCache.length > 0) {
+        renderStoredHistory();
+    } else {
+        addSys('Вы вошли в комнату. Подключение...');
+    }
+
     connectBroker(0);
 }
 function doSend(){
     initAudio();
     var i=$('msg-input'),t=(i.value||'').trim();if(!t)return;
     if(!mqttClient||!mqttClient.connected){addSys('Нет соединения.');return;}
+    var ts = Date.now();
     mqttClient.publish(topicMsg, JSON.stringify({
-        id:myId, name:myName, text:t, _t:Date.now()
+        id:myId, name:myName, text:t, _t:ts
     }));
-    addMsg(t,null,true);
+    addMsg(t,null,true,ts);
     i.value='';if(i.blur)i.blur();
 }
 function doCopyCode(b){copyText($('room-code').textContent).then(function(ok){flash(b,ok?'✅ Скопировано!':'❌');});}
@@ -839,8 +1138,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target === modal) closeInstallModal();
         });
     }
+    var cm = document.getElementById('confirm-modal');
+    if (cm) {
+        cm.addEventListener('click', function(e) {
+            if (e.target === cm) closeConfirm();
+        });
+    }
+    var sm = document.getElementById('sound-settings-modal');
+    if (sm) {
+        sm.addEventListener('click', function(e) {
+            if (e.target === sm) closeSoundSettings();
+        });
+    }
     var btn = document.getElementById('sound-btn');
     if (btn) btn.textContent = soundEnabled ? '🔊' : '🔇';
+    updateSoundButtons();
 });
 
 setTimeout(function(){var e;
@@ -850,7 +1162,6 @@ setTimeout(function(){var e;
     e=$('msg-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doSend();}});
 },100);
 
-// Первый клик в любом месте — разблокирует звук
 document.addEventListener('click', function() { initAudio(); }, { once: true });
 document.addEventListener('touchstart', function() { initAudio(); }, { once: true });
 
