@@ -211,7 +211,6 @@ button.full { width: 100%; margin-top: 10px; }
 #ios-install.visible { display: block; }
 #ios-install button { margin-top: 10px; padding: 8px 16px; min-height: 40px; font-size: 14px; }
 
-/* === Модалка установки === */
 #install-modal {
     display: none;
     position: fixed;
@@ -458,7 +457,6 @@ button.full { width: 100%; margin-top: 10px; }
     <button type="button" onclick="document.getElementById('ios-install').classList.remove('visible')">Понятно</button>
 </div>
 
-<!-- === Модалка установки приложения === -->
 <div id="install-modal">
     <div class="install-card">
         <h3>📥 Установить приложение</h3>
@@ -469,11 +467,10 @@ button.full { width: 100%; margin-top: 10px; }
             <button type="button" class="install-tab" data-os="iphone" onclick="showInstallTab('iphone')">🍏 iPhone</button>
         </div>
 
-        <!-- Windows -->
         <div class="install-panel" id="install-windows">
             <p>Установите чат как <b>приложение на рабочий стол Windows</b>:</p>
             <ol>
-                <li>Откройте сайт в браузере <b>Chrome</b> или <b>Edge</b>.</li>
+                <li>Откройте сайт в браузере <b>Chrome</b>, <b>Edge</b> или <b>Яндекс</b>.</li>
                 <li>В адресной строке справа найдите <b>иконку ⊕</b> или <b>🖥️ «Установить»</b> — кликните по ней.</li>
                 <li>Либо: нажмите <b>⋮ (три точки)</b> в правом верхнем углу → <b>«Установить приложение»</b>.</li>
                 <li>Введите название (например, <code>Чат</code>) → <b>«Установить»</b>.</li>
@@ -484,7 +481,6 @@ button.full { width: 100%; margin-top: 10px; }
             </div>
         </div>
 
-        <!-- Android -->
         <div class="install-panel" id="install-android">
             <p>Установите чат как <b>приложение на телефон Android</b>:</p>
             <ol>
@@ -495,11 +491,10 @@ button.full { width: 100%; margin-top: 10px; }
                 <li>Иконка <b>⚡ Чат</b> появится на <b>рабочем столе телефона</b> и в меню приложений.</li>
             </ol>
             <div class="note">
-                ⚠️ <b>В Яндекс Браузере</b> кнопки «Установить приложение» нет. Используйте <b>Chrome</b> или <b>«Добавить на главный экран»</b> через меню ⋮.
+                ⚠️ Если пишет <b>«это приложение нельзя установить»</b> — включите <b>«Версия для ПК»</b> в меню Chrome, дождитесь перезагрузки страницы, и значок установки появится в адресной строке.
             </div>
         </div>
 
-        <!-- iPhone -->
         <div class="install-panel" id="install-iphone">
             <p>Установите чат как <b>приложение на iPhone/iPad</b>:</p>
             <ol>
@@ -589,7 +584,8 @@ function publish(o){
     }).then(function(r){ return r.ok; }).catch(function(e){ return false; });
 }
 
-var POLL_INTERVAL = 2500;
+// === ИЗМЕНЕНО: интервал polling увеличен до 4 сек ===
+var POLL_INTERVAL = 4000;
 
 function startPolling() {
     if (pollTimer) return;
@@ -638,7 +634,8 @@ function doPoll() {
     .catch(function(e) {
         pollInFlight = false;
         consecutiveFails++;
-        if (consecutiveFails >= 3) {
+        // === ИЗМЕНЕНО: показываем предупреждение только после 8 подряд неудач (~32 сек) ===
+        if (consecutiveFails >= 8) {
             setStatus('⚠️ Плохая связь, продолжаю попытки...', 'waiting');
         }
     });
@@ -677,7 +674,8 @@ function cleanPeers(){var now=Date.now(),ch=false;
 function handleIncoming(d){if(!d||d.id===myId)return;if(d.to&&d.to!==myId)return;
     if(d.kind==='hello'||d.kind==='presence'){var isNew=!peers[d.id];
         peers[d.id]={name:d.name,lastSeen:Date.now()};renderParts();
-        if(isNew&&d.kind==='hello'){addSys(d.name+' присоединился');publish({kind:'presence',id:myId,name:myName});}}
+        // === ИЗМЕНЕНО: не отправляем ответный presence при hello — экономим трафик ===
+        if(isNew&&d.kind==='hello'){addSys(d.name+' присоединился');}}
     else if(d.kind==='msg')addMsg(d.text,d.name,false);
     else if(d.kind==='leave'){if(peers[d.id]){var p=peers[d.id];delete peers[d.id];
         renderParts();addSys(p.name+' вышел');}}
@@ -709,10 +707,11 @@ function startRoom(c,n){myName=n;roomCode=c;topic=normTopic(c);
     renderParts();addSys('Вы вошли в комнату. Подключение...');
     publish({kind:'hello',id:myId,name:myName});
     startPolling();
+    // === ИЗМЕНЕНО: heartbeat каждые 20 секунд (было 10) ===
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = setInterval(function(){
         publish({kind:'presence',id:myId,name:myName});
-    }, 10000);
+    }, 20000);
     if (cleanupTimer) clearInterval(cleanupTimer);
     cleanupTimer = setInterval(cleanPeers, 6000);
 }
@@ -852,9 +851,6 @@ function doVideoToggle(){if(!localStream)return;var t=localStream.getVideoTracks
     if(t.enabled){b.classList.remove('video-off');b.textContent='📹';}
     else{b.classList.add('video-off');b.textContent='🚫';}}
 
-// ============================================================
-//  Модалка установки приложения
-// ============================================================
 function detectOS() {
     var ua = navigator.userAgent || '';
     var platform = navigator.platform || '';
