@@ -513,6 +513,7 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
 'use strict';
 
@@ -527,8 +528,15 @@ window.onerror = function(msg, url, line) {
     return false;
 };
 
-var NTFY = 'https://ntfy.sh';
-var WORDS = ['moon','star','sun','fox','wolf','cat','bird','fire','ice','leaf','tree','rock','wave','snow','rain','wind','gold','blue','red','cyan','mint','kite','bell','lion','tiger','bear','fish','rose','lily','fern','pond','lake','river','peak','dune','sand','stone','flame','ember','cloud','storm'];
+// ============================================================
+//  MQTT через WebSocket — не блокируется в РФ
+// ============================================================
+var BROKERS = [
+    { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ' },
+    { url: 'wss://broker.emqx.io:8084/mqtt', name: 'EMQX' },
+    { url: 'wss://test.mosquitto.org:8081/mqtt', name: 'Mosquitto' }
+];
+
 var ICE_CONFIG = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -539,17 +547,20 @@ var ICE_CONFIG = {
     iceCandidatePoolSize: 6
 };
 
-var topic=null, roomCode=null, myName='Аноним';
-var myId='id_'+Math.random().toString(36).slice(2,10);
-var heartbeatTimer=null, cleanupTimer=null, pollTimer=null;
-var lastPollTime=0;
-var pollInFlight=false;
-var consecutiveFails=0;
-var peers={}, seenIds={};
-var pc=null, localStream=null, remoteStream=null;
-var callPeerId=null, callPeerName=null, callIsVideo=false;
-var callState='idle', pendingIce=[], callTimerInterval=null, callStartedAt=0;
-var pendingOffer=null, currentGame=null, gamesLoaded=false;
+var WORDS = ['moon','star','sun','fox','wolf','cat','bird','fire','ice','leaf','tree','rock','wave','snow','rain','wind','gold','blue','red','cyan','mint','kite','bell','lion','tiger','bear','fish','rose','lily','fern','pond','lake','river','peak','dune','sand','stone','flame','ember','cloud','storm'];
+
+var mqttClient = null;
+var brokerIndex = 0;
+var topicMsg = null, topicPresence = null, topicSignal = null;
+var roomCode = null, myName = 'Аноним';
+var myId = 'id_' + Math.random().toString(36).slice(2, 10);
+var heartbeatTimer = null, cleanupTimer = null;
+var peers = {}, seenIds = {};
+
+var pc = null, localStream = null, remoteStream = null;
+var callPeerId = null, callPeerName = null, callIsVideo = false;
+var callState = 'idle', pendingIce = [], callTimerInterval = null, callStartedAt = 0;
+var pendingOffer = null, currentGame = null, gamesLoaded = false;
 
 function $(id){return document.getElementById(id);}
 function setStatus(t,c){var e=$('status');if(!e)return;e.innerHTML=t;e.className=c||'';}
@@ -559,7 +570,7 @@ function genCode(){
     while(w2===w1)w2=WORDS[Math.floor(Math.random()*WORDS.length)];
     return w1+'-'+w2+'-'+Math.floor(Math.random()*90+10);
 }
-function normTopic(c){return 'superpulya-chat-'+String(c).toLowerCase().replace(/[^a-z0-9]/g,'');}
+function normTopic(c){return 'superpulya-' + String(c).toLowerCase().replace(/[^a-z0-9]/g,'');}
 function copyText(t){
     return new Promise(function(res){
         if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -575,72 +586,116 @@ function flash(btn,text){if(!btn)return;var o=btn.innerHTML;btn.innerHTML=text;
 function fmtTime(sec){var m=Math.floor(sec/60).toString(),s=(sec%60).toString();
     if(m.length<2)m='0'+m;if(s.length<2)s='0'+s;return m+':'+s;}
 
-function publish(o){
-    if(!topic)return Promise.resolve(false);
-    return fetch(NTFY+'/'+topic, {
-        method:'POST',
-        body: JSON.stringify(o),
-        headers: {'Content-Type':'text/plain'}
-    }).then(function(r){ return r.ok; }).catch(function(e){ return false; });
-}
+// ============================================================
+//  MQTT: подключение к брокеру
+// ============================================================
+function connectBroker(attempt) {
+    attempt = attempt || 0;
+    if (attempt >= BROKERS.length) {
+        setStatus('❌ Не удалось подключиться ни к одному брокеру', 'error');
+        return;
+    }
+    var broker = BROKERS[attempt];
+    setStatus('⏳ Подключаюсь к ' + broker.name + '...', 'waiting');
 
-// === ИЗМЕНЕНО: интервал polling увеличен до 4 сек ===
-var POLL_INTERVAL = 4000;
+    var connected = false;
+    var timeout = setTimeout(function() {
+        if (connected) return;
+        try { if (mqttClient) mqttClient.end(true); } catch(e){}
+        connectBroker(attempt + 1);
+    }, 8000);
 
-function startPolling() {
-    if (pollTimer) return;
-    lastPollTime = Math.floor(Date.now()/1000) - 5;
-    setStatus('⏳ Подключаюсь...', 'waiting');
-    doPoll();
-    pollTimer = setInterval(doPoll, POLL_INTERVAL);
-}
-function stopPolling() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    pollInFlight = false;
-}
-function doPoll() {
-    if (pollInFlight || !topic) return;
-    pollInFlight = true;
-    var url = NTFY + '/' + topic + '/json?poll=1&since=' + lastPollTime;
-    fetch(url, { method: 'GET' })
-    .then(function(r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.text();
-    })
-    .then(function(text) {
-        pollInFlight = false;
-        consecutiveFails = 0;
-        setStatus('🟢 Подключено', 'online');
-        if (!text) return;
-        var lines = text.split('\n');
-        var maxTime = lastPollTime;
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim();
-            if (!line) continue;
-            try {
-                var outer = JSON.parse(line);
-                if (outer.time && outer.time > maxTime) maxTime = outer.time;
-                if (outer.event !== 'message') continue;
-                if (!outer.message) continue;
-                var inner = JSON.parse(outer.message);
-                var key = (outer.id || '') + '_' + (outer.time || '');
-                if (seenIds[key]) continue;
-                seenIds[key] = true;
-                handleIncoming(inner);
-            } catch (e) {}
+    try {
+        mqttClient = mqtt.connect(broker.url, {
+            clientId: 'sp_' + myId + '_' + Math.random().toString(36).slice(2, 6),
+            clean: true,
+            reconnectPeriod: 3000,
+            connectTimeout: 7000,
+            keepalive: 30
+        });
+    } catch(e) {
+        clearTimeout(timeout);
+        connectBroker(attempt + 1);
+        return;
+    }
+
+    mqttClient.on('connect', function() {
+        connected = true;
+        clearTimeout(timeout);
+        brokerIndex = attempt;
+        setStatus('🟢 Подключено (' + broker.name + ')', 'online');
+        subscribeAll();
+    });
+
+    mqttClient.on('error', function(err) {
+        if (!connected) {
+            clearTimeout(timeout);
+            try { mqttClient.end(true); } catch(e){}
+            connectBroker(attempt + 1);
         }
-        lastPollTime = maxTime - 1;
-    })
-    .catch(function(e) {
-        pollInFlight = false;
-        consecutiveFails++;
-        // === ИЗМЕНЕНО: показываем предупреждение только после 8 подряд неудач (~32 сек) ===
-        if (consecutiveFails >= 8) {
-            setStatus('⚠️ Плохая связь, продолжаю попытки...', 'waiting');
-        }
+    });
+
+    mqttClient.on('message', function(topic, payload) {
+        try {
+            var data = JSON.parse(payload.toString());
+            var key = (data._k || '') + '_' + (data._t || '');
+            if (data._k && seenIds[key]) return;
+            if (data._k) seenIds[key] = true;
+
+            if (topic === topicMsg) {
+                if (data.id === myId) return;
+                addMsg(data.text, data.name, false);
+            } else if (topic === topicPresence) {
+                if (data.id === myId) return;
+                var isNew = !peers[data.id];
+                peers[data.id] = {name: data.name, lastSeen: Date.now()};
+                renderParts();
+                if (isNew && data.kind === 'hello') addSys(data.name + ' присоединился');
+            } else if (topic === topicSignal) {
+                handleIncoming(data);
+            }
+        } catch(e) {}
     });
 }
 
+function subscribeAll() {
+    var base = normTopic(roomCode);
+    topicMsg = base + '/msg';
+    topicPresence = base + '/presence';
+    topicSignal = base + '/signal';
+
+    mqttClient.subscribe([topicMsg, topicPresence, topicSignal], {qos: 0}, function(err) {
+        if (err) {
+            showError('Ошибка подписки');
+            return;
+        }
+        // Приветствие
+        publishPresence('hello');
+
+        // Heartbeat — обновление присутствия
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        heartbeatTimer = setInterval(function(){ publishPresence('presence'); }, 15000);
+        if (cleanupTimer) clearInterval(cleanupTimer);
+        cleanupTimer = setInterval(cleanPeers, 6000);
+    });
+}
+
+function publishPresence(kind) {
+    if (!mqttClient || !mqttClient.connected) return;
+    mqttClient.publish(topicPresence, JSON.stringify({
+        kind: kind, id: myId, name: myName, _t: Date.now()
+    }));
+}
+
+function publishSignal(data) {
+    if (!mqttClient || !mqttClient.connected) return;
+    data._t = Date.now();
+    mqttClient.publish(topicSignal, JSON.stringify(data));
+}
+
+// ============================================================
+//  ЧАТ
+// ============================================================
 function addSys(t){var d=document.createElement('div');d.className='msg sys';d.textContent=t;
     $('messages').appendChild(d);$('messages').scrollTop=$('messages').scrollHeight;}
 function addMsg(t,sender,me){var d=document.createElement('div');
@@ -649,6 +704,9 @@ function addMsg(t,sender,me){var d=document.createElement('div');
     d.appendChild(document.createTextNode(t));$('messages').appendChild(d);
     $('messages').scrollTop=$('messages').scrollHeight;}
 
+// ============================================================
+//  УЧАСТНИКИ
+// ============================================================
 function renderParts(){var box=$('participants');box.innerHTML='';
     var me=document.createElement('span');me.className='participant me';
     me.textContent=myName+' (вы)';box.appendChild(me);
@@ -667,56 +725,56 @@ function renderPeerList(){var list=$('peers-list');if(!list)return;list.innerHTM
         vb.onclick=function(){startCall(peerId,p.name,true);};row.appendChild(vb);
         list.appendChild(row);})(id,peers[id]);}}
 function cleanPeers(){var now=Date.now(),ch=false;
-    for(var id in peers){if(now-peers[id].lastSeen>25000){
+    for(var id in peers){if(now-peers[id].lastSeen>40000){
         var nm=peers[id].name;delete peers[id];ch=true;addSys(nm+' отключился');}}
     if(ch)renderParts();}
 
-function handleIncoming(d){if(!d||d.id===myId)return;if(d.to&&d.to!==myId)return;
-    if(d.kind==='hello'||d.kind==='presence'){var isNew=!peers[d.id];
-        peers[d.id]={name:d.name,lastSeen:Date.now()};renderParts();
-        // === ИЗМЕНЕНО: не отправляем ответный presence при hello — экономим трафик ===
-        if(isNew&&d.kind==='hello'){addSys(d.name+' присоединился');}}
-    else if(d.kind==='msg')addMsg(d.text,d.name,false);
-    else if(d.kind==='leave'){if(peers[d.id]){var p=peers[d.id];delete peers[d.id];
-        renderParts();addSys(p.name+' вышел');}}
-    else if(d.kind==='call-request')incCall(d);
+function handleIncoming(d){
+    if(!d||d.id===myId)return;
+    if(d.to&&d.to!==myId)return;
+    if(d.kind==='call-request')incCall(d);
     else if(d.kind==='call-response')respCall(d);
     else if(d.kind==='call-ice')remIce(d);
-    else if(d.kind==='call-end')remHangup(d);}
+    else if(d.kind==='call-end')remHangup(d);
+}
 
+// ============================================================
+//  UI
+// ============================================================
 function doShowCreate(){$('role-picker').style.display='none';$('step-create').style.display='block';
     var c=genCode();$('room-code').textContent=c;roomCode=c;}
 function doShowJoin(){$('role-picker').style.display='none';$('step-join').style.display='block';}
-function doBack(){stopPolling();
+function doBack(){
+    if(mqttClient){try{mqttClient.end(true);}catch(e){}mqttClient=null;}
     if(heartbeatTimer)clearInterval(heartbeatTimer);
     if(cleanupTimer)clearInterval(cleanupTimer);
-    peers={};$('step-join').style.display='none';$('step-create').style.display='none';
-    $('role-picker').style.display='block';setStatus('Выберите действие');}
+    peers={};
+    $('step-join').style.display='none';$('step-create').style.display='none';
+    $('role-picker').style.display='block';setStatus('Выберите действие');
+}
 function doEnter(){var n=($('my-name').value||'').trim()||'Аноним';
     if(!roomCode){setStatus('❌ Код не сгенерирован','error');return;}startRoom(roomCode,n);}
 function doJoin(){var c=($('join-input').value||'').trim();
     if(!c){setStatus('❌ Введите код','error');return;}
     var n=($('join-name').value||'').trim()||'Аноним';startRoom(c,n);}
-function startRoom(c,n){myName=n;roomCode=c;topic=normTopic(c);
+function startRoom(c,n){
+    myName=n;roomCode=c;
     $('header-code').textContent=c;$('modal-code').textContent=c;
     setStatus('⏳ Подключаюсь...','waiting');
     if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
     $('setup').style.display='none';
     document.querySelector('h1').style.display='none';
     $('main').classList.add('visible');
-    renderParts();addSys('Вы вошли в комнату. Подключение...');
-    publish({kind:'hello',id:myId,name:myName});
-    startPolling();
-    // === ИЗМЕНЕНО: heartbeat каждые 20 секунд (было 10) ===
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
-    heartbeatTimer = setInterval(function(){
-        publish({kind:'presence',id:myId,name:myName});
-    }, 20000);
-    if (cleanupTimer) clearInterval(cleanupTimer);
-    cleanupTimer = setInterval(cleanPeers, 6000);
+    renderParts();
+    addSys('Вы вошли в комнату. Подключение...');
+    connectBroker(0);
 }
 function doSend(){var i=$('msg-input'),t=(i.value||'').trim();if(!t)return;
-    publish({kind:'msg',id:myId,name:myName,text:t});addMsg(t,null,true);
+    if(!mqttClient||!mqttClient.connected){addSys('Нет соединения.');return;}
+    mqttClient.publish(topicMsg, JSON.stringify({
+        id:myId, name:myName, text:t, _t:Date.now()
+    }));
+    addMsg(t,null,true);
     i.value='';if(i.blur)i.blur();}
 function doCopyCode(b){copyText($('room-code').textContent).then(function(ok){flash(b,ok?'✅ Скопировано!':'❌');});}
 function doShareCode(b){var c=$('room-code').textContent;
@@ -766,9 +824,12 @@ function resizeGames(){if(currentGame==='snake'){var c=$('snake-canvas');
         c2.style.width=w+'px';c2.style.height=h+'px';}}}
 window.addEventListener('resize',resizeGames);
 
+// ============================================================
+//  ЗВОНКИ
+// ============================================================
 function newPC(){var c=new RTCPeerConnection(ICE_CONFIG);
     c.onicecandidate=function(e){if(e.candidate&&callPeerId)
-        publish({kind:'call-ice',id:myId,name:myName,to:callPeerId,candidate:e.candidate});};
+        publishSignal({kind:'call-ice',id:myId,name:myName,to:callPeerId,candidate:e.candidate});};
     c.ontrack=function(e){if(!remoteStream)remoteStream=new MediaStream();
         remoteStream.addTrack(e.track);var rv=$('remote-video');
         if(rv.srcObject!==remoteStream)rv.srcObject=remoteStream;};
@@ -784,10 +845,10 @@ function startCall(pid,pn,v){if(callState!=='idle'){addSys('Уже идёт зв
     getMedia(v).then(function(st){localStream=st;pc=newPC();
         st.getTracks().forEach(function(t){pc.addTrack(t,st);});return pc.createOffer();})
     .then(function(o){return pc.setLocalDescription(o).then(function(){return o;});})
-    .then(function(o){publish({kind:'call-request',id:myId,name:myName,to:pid,video:v,sdp:o});
+    .then(function(o){publishSignal({kind:'call-request',id:myId,name:myName,to:pid,video:v,sdp:o});
         showOverlay(pn,v);setStatus('📞 Идёт вызов...','waiting');})
     .catch(function(e){addSys('❌ Нет доступа: '+e.message);callState='idle';callPeerId=null;});}
-function incCall(d){if(callState!=='idle'){publish({kind:'call-response',id:myId,name:myName,
+function incCall(d){if(callState!=='idle'){publishSignal({kind:'call-response',id:myId,name:myName,
     to:d.id,accept:false,reason:'busy'});return;}
     callPeerId=d.id;callPeerName=d.name;callIsVideo=!!d.video;callState='incoming';
     $('incoming-from').textContent=d.name+' звонит...';
@@ -801,13 +862,13 @@ function doAccept(){if(!pendingOffer)return;$('incoming-call').classList.remove(
         return pc.addIceCandidate(new RTCIceCandidate(c)).catch(function(){});}));})
     .then(function(){pendingIce=[];return pc.createAnswer();})
     .then(function(a){return pc.setLocalDescription(a).then(function(){return a;});})
-    .then(function(a){publish({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:true,sdp:a});
+    .then(function(a){publishSignal({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:true,sdp:a});
         callState='active';showOverlay(callPeerName,callIsVideo);pendingOffer=null;})
     .catch(function(e){addSys('❌ '+e.message);
-        publish({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:false,reason:'error'});
+        publishSignal({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:false,reason:'error'});
         callState='idle';callPeerId=null;});}
 function doReject(){$('incoming-call').classList.remove('visible');
-    if(callPeerId)publish({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:false,reason:'rejected'});
+    if(callPeerId)publishSignal({kind:'call-response',id:myId,name:myName,to:callPeerId,accept:false,reason:'rejected'});
     callState='idle';callPeerId=null;pendingOffer=null;}
 function respCall(d){if(d.to!==myId||callState!=='calling')return;
     if(!d.accept){addSys('❌ Звонок отклонён.');endCall(false);return;}
@@ -832,7 +893,7 @@ function showOverlay(pn,v){$('call-peer-name').textContent=pn;$('call-timer').te
 function startTimer(){if(callTimerInterval)return;callStartedAt=Date.now();
     callTimerInterval=setInterval(function(){
         $('call-timer').textContent=fmtTime(Math.floor((Date.now()-callStartedAt)/1000));},500);}
-function endCall(notify){if(notify&&callPeerId)publish({kind:'call-end',id:myId,name:myName,to:callPeerId});
+function endCall(notify){if(notify&&callPeerId)publishSignal({kind:'call-end',id:myId,name:myName,to:callPeerId});
     if(pc){try{pc.close();}catch(e){}pc=null;}
     if(localStream){localStream.getTracks().forEach(function(t){t.stop();});localStream=null;}
     remoteStream=null;pendingIce=[];
@@ -851,6 +912,9 @@ function doVideoToggle(){if(!localStream)return;var t=localStream.getVideoTracks
     if(t.enabled){b.classList.remove('video-off');b.textContent='📹';}
     else{b.classList.add('video-off');b.textContent='🚫';}}
 
+// ============================================================
+//  Модалка установки
+// ============================================================
 function detectOS() {
     var ua = navigator.userAgent || '';
     var platform = navigator.platform || '';
@@ -859,7 +923,6 @@ function detectOS() {
     if (/Win/i.test(platform) || /Windows/i.test(ua)) return 'windows';
     return 'windows';
 }
-
 function showInstallTab(os) {
     var tabs = document.querySelectorAll('.install-tab');
     for (var i = 0; i < tabs.length; i++) {
@@ -870,17 +933,14 @@ function showInstallTab(os) {
         panels[i].classList.toggle('active', panels[i].id === 'install-' + os);
     }
 }
-
 function doInstall() {
     var modal = document.getElementById('install-modal');
     modal.classList.add('visible');
     showInstallTab(detectOS());
 }
-
 function closeInstallModal() {
     document.getElementById('install-modal').classList.remove('visible');
 }
-
 document.addEventListener('DOMContentLoaded', function() {
     var modal = document.getElementById('install-modal');
     if (modal) {
@@ -896,18 +956,6 @@ setTimeout(function(){var e;
     e=$('join-name');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doJoin();}});
     e=$('msg-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doSend();}});
 },100);
-
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && topic) {
-        doPoll();
-        publish({kind:'presence',id:myId,name:myName});
-    }
-});
-
-window.addEventListener('beforeunload',function(){if(topic&&myId){try{
-    navigator.sendBeacon(NTFY+'/'+topic,JSON.stringify({kind:'leave',id:myId,name:myName}));
-    if(callState!=='idle')navigator.sendBeacon(NTFY+'/'+topic,
-        JSON.stringify({kind:'call-end',id:myId,name:myName,to:callPeerId}));}catch(e){}}});
 
 if(!window.isSecureContext)setTimeout(function(){showError('Нужен HTTPS.');},200);
 </script>
