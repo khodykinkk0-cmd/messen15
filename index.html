@@ -79,6 +79,11 @@ button.full { width: 100%; margin-top: 10px; }
     color: #0a0f1e; border: none; border-radius: 8px; padding: 6px 12px;
     font-size: 12px; font-weight: bold; cursor: pointer; font-family: inherit;
     min-height: 34px; flex: 0 0 auto; }
+.sound-btn { background: transparent;
+    color: #88aacc; border: none; font-size: 20px; cursor: pointer;
+    padding: 4px 8px; min-height: 34px; width: auto; flex: 0 0 auto;
+    font-family: inherit; }
+.sound-btn:active { transform: scale(0.94); }
 #participants { display: flex; gap: 6px; padding: 6px 12px; background: #0a0f1e;
     border-bottom: 1px solid #2a3a4a; overflow-x: auto; flex-shrink: 0; }
 .participant { display: inline-flex; align-items: center; padding: 3px 10px;
@@ -322,7 +327,10 @@ button.full { width: 100%; margin-top: 10px; }
             <div id="chat-area">
                 <div id="chat-header">
                     <span>Комната: <span class="room-code" id="header-code">---</span></span>
-                    <button type="button" class="invite-btn" onclick="doInvite()">+ Пригласить</button>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <button type="button" class="sound-btn" id="sound-btn" onclick="toggleSound()">🔊</button>
+                        <button type="button" class="invite-btn" onclick="doInvite()">+ Пригласить</button>
+                    </div>
                 </div>
                 <div id="participants"></div>
                 <div id="messages"></div>
@@ -457,7 +465,6 @@ var heartbeatTimer = null, cleanupTimer = null;
 var peers = {};
 var currentGame = null, gamesLoaded = false;
 
-// === PWA: автоматическая установка ===
 var deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', function(e) {
@@ -495,6 +502,90 @@ function fbCopy(t,res){try{var ta=document.createElement('textarea');ta.value=t;
 function flash(btn,text){if(!btn)return;var o=btn.innerHTML;btn.innerHTML=text;
     setTimeout(function(){btn.innerHTML=o;},1500);}
 
+// ============================================================
+//  ЗВУК УВЕДОМЛЕНИЯ (Web Audio API)
+// ============================================================
+var audioCtx = null;
+var soundEnabled = localStorage.getItem('chat-sound') !== 'off';
+
+function initAudio() {
+    if (audioCtx) {
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+        return;
+    }
+    try {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) {
+            audioCtx = new Ctx();
+            if (audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+        }
+    } catch (e) {}
+}
+
+function playBeep(freq, startTime, duration, volume) {
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    var v = volume || 0.15;
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(v, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.05);
+}
+
+function playNotify() {
+    if (!soundEnabled) return;
+    if (!audioCtx) initAudio();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+    try {
+        var now = audioCtx.currentTime;
+        playBeep(880, now, 0.10, 0.15);
+        playBeep(1318.51, now + 0.10, 0.15, 0.12);
+    } catch (e) {}
+}
+
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem('chat-sound', soundEnabled ? 'on' : 'off');
+    var btn = document.getElementById('sound-btn');
+    if (btn) btn.textContent = soundEnabled ? '🔊' : '🔇';
+    if (soundEnabled) { initAudio(); playNotify(); }
+}
+
+// ============================================================
+//  МИГАНИЕ ЗАГОЛОВКА ВКЛАДКИ
+// ============================================================
+var originalTitle = document.title;
+var titleTimer = null;
+var titleState = 0;
+
+function flashTitle(text) {
+    if (!document.hidden) return;
+    if (titleTimer) clearInterval(titleTimer);
+    var short = text.length > 30 ? text.slice(0, 30) + '…' : text;
+    titleState = 0;
+    titleTimer = setInterval(function() {
+        titleState = 1 - titleState;
+        document.title = titleState ? '💬 ' + short : originalTitle;
+    }, 1000);
+}
+
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && titleTimer) {
+        clearInterval(titleTimer);
+        titleTimer = null;
+        document.title = originalTitle;
+    }
+});
+
+// ============================================================
+//  MQTT
+// ============================================================
 function connectBroker(attempt) {
     attempt = attempt || 0;
     if (attempt >= BROKERS.length) {
@@ -546,6 +637,8 @@ function connectBroker(attempt) {
             if (topic === topicMsg) {
                 if (data.id === myId) return;
                 addMsg(data.text, data.name, false);
+                playNotify();
+                flashTitle(data.name + ': ' + data.text);
             } else if (topic === topicPresence) {
                 if (data.id === myId) return;
                 var isNew = !peers[data.id];
@@ -598,8 +691,10 @@ function cleanPeers(){var now=Date.now(),ch=false;
     if(ch)renderParts();}
 
 function doShowCreate(){$('role-picker').style.display='none';$('step-create').style.display='block';
-    var c=genCode();$('room-code').textContent=c;roomCode=c;}
-function doShowJoin(){$('role-picker').style.display='none';$('step-join').style.display='block';}
+    var c=genCode();$('room-code').textContent=c;roomCode=c;
+    initAudio();}
+function doShowJoin(){$('role-picker').style.display='none';$('step-join').style.display='block';
+    initAudio();}
 function doBack(){
     if(mqttClient){try{mqttClient.end(true);}catch(e){}mqttClient=null;}
     if(heartbeatTimer)clearInterval(heartbeatTimer);
@@ -608,11 +703,19 @@ function doBack(){
     $('step-join').style.display='none';$('step-create').style.display='none';
     $('role-picker').style.display='block';setStatus('Выберите действие');
 }
-function doEnter(){var n=($('my-name').value||'').trim()||'Аноним';
-    if(!roomCode){setStatus('❌ Код не сгенерирован','error');return;}startRoom(roomCode,n);}
-function doJoin(){var c=($('join-input').value||'').trim();
+function doEnter(){
+    initAudio();
+    var n=($('my-name').value||'').trim()||'Аноним';
+    if(!roomCode){setStatus('❌ Код не сгенерирован','error');return;}
+    startRoom(roomCode,n);
+}
+function doJoin(){
+    initAudio();
+    var c=($('join-input').value||'').trim();
     if(!c){setStatus('❌ Введите код','error');return;}
-    var n=($('join-name').value||'').trim()||'Аноним';startRoom(c,n);}
+    var n=($('join-name').value||'').trim()||'Аноним';
+    startRoom(c,n);
+}
 function startRoom(c,n){
     myName=n;roomCode=c;
     $('header-code').textContent=c;$('modal-code').textContent=c;
@@ -625,13 +728,16 @@ function startRoom(c,n){
     addSys('Вы вошли в комнату. Подключение...');
     connectBroker(0);
 }
-function doSend(){var i=$('msg-input'),t=(i.value||'').trim();if(!t)return;
+function doSend(){
+    initAudio();
+    var i=$('msg-input'),t=(i.value||'').trim();if(!t)return;
     if(!mqttClient||!mqttClient.connected){addSys('Нет соединения.');return;}
     mqttClient.publish(topicMsg, JSON.stringify({
         id:myId, name:myName, text:t, _t:Date.now()
     }));
     addMsg(t,null,true);
-    i.value='';if(i.blur)i.blur();}
+    i.value='';if(i.blur)i.blur();
+}
 function doCopyCode(b){copyText($('room-code').textContent).then(function(ok){flash(b,ok?'✅ Скопировано!':'❌');});}
 function doShareCode(b){var c=$('room-code').textContent;
     if(navigator.share)navigator.share({title:'Чат',text:c}).catch(function(e){if(e.name!=='AbortError')copyText(c);});
@@ -680,7 +786,6 @@ function resizeGames(){if(currentGame==='snake'){var c=$('snake-canvas');
         c2.style.width=w+'px';c2.style.height=h+'px';}}}
 window.addEventListener('resize',resizeGames);
 
-// === УСТАНОВКА ===
 function detectOS() {
     var ua = navigator.userAgent || '';
     var platform = navigator.platform || '';
@@ -700,7 +805,6 @@ function showInstallTab(os) {
     }
 }
 function doInstall() {
-    // Android / Windows Chrome / Edge — системное окно установки в 1 клик
     if (deferredPrompt) {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then(function(choice) {
@@ -711,22 +815,16 @@ function doInstall() {
         });
         return;
     }
-
-    // iOS Safari — только инструкция, иначе никак
     var os = detectOS();
     if (os === 'iphone') {
         document.getElementById('ios-install').classList.add('visible');
         return;
     }
-
-    // Уже установлено?
     var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     if (isStandalone) {
         showError('Приложение уже установлено');
         return;
     }
-
-    // Android без события — открываем подсказку
     var modal = document.getElementById('install-modal');
     modal.classList.add('visible');
     showInstallTab(os);
@@ -741,6 +839,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target === modal) closeInstallModal();
         });
     }
+    var btn = document.getElementById('sound-btn');
+    if (btn) btn.textContent = soundEnabled ? '🔊' : '🔇';
 });
 
 setTimeout(function(){var e;
@@ -749,6 +849,10 @@ setTimeout(function(){var e;
     e=$('join-name');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doJoin();}});
     e=$('msg-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doSend();}});
 },100);
+
+// Первый клик в любом месте — разблокирует звук
+document.addEventListener('click', function() { initAudio(); }, { once: true });
+document.addEventListener('touchstart', function() { initAudio(); }, { once: true });
 
 if(!window.isSecureContext)setTimeout(function(){showError('Нужен HTTPS.');},200);
 </script>
