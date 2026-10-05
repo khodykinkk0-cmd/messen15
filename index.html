@@ -1453,20 +1453,13 @@ function doTab(n,b){var ts=document.querySelectorAll('.tab-btn');
     document.getElementById('tab-'+n).classList.add('active');
     if(n==='games')resizeGames();}
 
-function loadGames(){if(gamesLoaded)return Promise.resolve();
-    return new Promise(function(res,rej){
-        var code=document.getElementById('games-code').textContent;
-        var blob=new Blob([code],{type:'application/javascript'});
-        var url=URL.createObjectURL(blob);
-        var s=document.createElement('script');
-        s.src=url;s.onload=function(){gamesLoaded=true;URL.revokeObjectURL(url);res();};
-        s.onerror=function(){rej(new Error('Не удалось загрузить'));};
-        document.head.appendChild(s);});}
-function doGame(n,b){var l=$('loading-games');
-    if(!gamesLoaded){l.style.display='block';
-        loadGames().then(function(){l.style.display='none';runGame(n,b);})
-            .catch(function(e){l.textContent='❌ '+e.message;});}
-    else runGame(n,b);}
+function doGame(n,b){
+    if(!gamesLoaded){
+        showError('Игры загружаются, подождите секунду...');
+        return;
+    }
+    runGame(n,b);
+}
 function runGame(n,b){var bs=document.querySelectorAll('.game-btn');
     for(var i=0;i<bs.length;i++)bs[i].classList.remove('active');b.classList.add('active');
     if(window.GAMES&&window.GAMES.stop)window.GAMES.stop();
@@ -1520,6 +1513,30 @@ function closeInstallModal() { $('install-modal').classList.remove('visible'); }
 //  ИНИЦИАЛИЗАЦИЯ
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+
+    // ===== Загрузка игр сразу при старте =====
+    (function loadGamesNow(){
+        try {
+            var code = document.getElementById('games-code').textContent;
+            var blob = new Blob([code], {type: 'application/javascript'});
+            var url = URL.createObjectURL(blob);
+            var s = document.createElement('script');
+            s.src = url;
+            s.onload = function() {
+                gamesLoaded = true;
+                URL.revokeObjectURL(url);
+                console.log('✅ Игры загружены');
+            };
+            s.onerror = function() {
+                console.error('❌ Ошибка загрузки игр');
+                showError('Не удалось загрузить игры');
+            };
+            document.head.appendChild(s);
+        } catch(e) {
+            console.error('Ошибка init игр:', e);
+        }
+    })();
+
     var modals = ['install-modal','confirm-modal','sound-settings-modal','profile-modal','call-modal','invite-modal','myid-modal','restore-modal'];
     modals.forEach(function(id) {
         var m = document.getElementById(id);
