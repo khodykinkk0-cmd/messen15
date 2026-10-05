@@ -12,11 +12,14 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; background: #0a0f1e; color: #e0e6f0;
-    font-family: -apple-system, 'Segoe UI', Roboto, monospace; overflow: hidden; }
+    font-family: -apple-system, 'Segoe UI', Roboto, monospace;
+    overflow: hidden; overflow-x: hidden; }
 #app { display: flex; flex-direction: column; height: 100%; max-width: 800px;
+    width: 100%; box-sizing: border-box;
     margin: 0 auto; padding: 10px;
     padding-top: max(env(safe-area-inset-top), 10px);
-    padding-bottom: max(env(safe-area-inset-bottom), 10px); }
+    padding-bottom: max(env(safe-area-inset-bottom), 10px);
+    overflow: hidden; }
 h1 { color: #ffaa44; font-size: 15px; text-align: center; margin-bottom: 8px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
 #install-btn { background: linear-gradient(135deg, #44ff88, #22aa55);
@@ -111,15 +114,17 @@ button.full { width: 100%; margin-top: 10px; }
 #input-row button { flex: 0 0 auto; padding: 10px 16px; min-width: 54px; font-size: 18px; }
 #games-area { display: flex; flex-direction: column; flex: 1;
     background: #0f1722; border: 1px solid #2a3a4a; border-radius: 12px;
-    overflow: hidden; min-height: 0; }
+    overflow: hidden; min-height: 0; box-sizing: border-box; }
 #game-picker { display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 8px; padding: 10px; background: #0a0f1e;
-    border-bottom: 1px solid #2a3a4a; flex-shrink: 0; }
-.game-btn { background: #1a2a3a; color: #c0e0ff; border: none; padding: 12px 8px;
-    border-radius: 10px; font-family: inherit; font-weight: bold; font-size: 13px;
-    cursor: pointer; min-height: 58px; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 4px; }
-.game-btn .g-icon { font-size: 22px; }
+    gap: 6px; padding: 8px; background: #0a0f1e;
+    border-bottom: 1px solid #2a3a4a; flex-shrink: 0;
+    box-sizing: border-box; }
+.game-btn { background: #1a2a3a; color: #c0e0ff; border: none; padding: 8px 4px;
+    border-radius: 10px; font-family: inherit; font-weight: bold; font-size: 12px;
+    cursor: pointer; min-height: 48px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
+    overflow: hidden; white-space: nowrap; }
+.game-btn .g-icon { font-size: 18px; line-height: 1; }
 .game-btn.active { background: linear-gradient(135deg, #ffaa44, #ff7722); color: #0a0f1e; }
 #game-stage { flex: 1; overflow: auto; display: flex; flex-direction: column;
     align-items: center; justify-content: center; padding: 14px; min-height: 0; }
@@ -129,8 +134,30 @@ button.full { width: 100%; margin-top: 10px; }
 .game-over { color: #ff6666; font-size: 16px; font-weight: bold;
     text-align: center; margin: 10px 0; padding: 0 8px; }
 .game-btn-restart { max-width: 200px; margin-top: 10px; }
-#snake-canvas, #pulya-canvas { background: #0a0f1e; border: 2px solid #2a3a4a;
-    border-radius: 10px; display: block; touch-action: none; max-width: 100%; }
+#pulya-canvas {
+    background: #0a0f1e;
+    border: 2px solid #2a3a4a;
+    border-radius: 10px;
+    display: block;
+    touch-action: none;
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    box-sizing: border-box;
+}
+#snake-canvas {
+    background: #0a0f1e;
+    border: 2px solid #2a3a4a;
+    border-radius: 10px;
+    display: block;
+    touch-action: none;
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+}
 .swipe-hint { color: #889; font-size: 12px; margin-top: 10px; text-align: center; }
 .ttt-grid { display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 6px; width: 240px; max-width: 90vw; }
@@ -919,6 +946,7 @@ function renderMainMenu() {
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
 function showMainMenu() {
+    $('setup').style.display = 'block';
     $('profile-create').style.display = 'none';
     $('main-menu').style.display = 'block';
     $('step-create').style.display = 'none';
@@ -1402,6 +1430,7 @@ function startRoom(c){
     $('modal-code').textContent=c;
     setStatus('⏳ Подключаюсь...','waiting');
     if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+    $('setup').style.display = 'none';
     $('profile-create').style.display='none';
     $('main-menu').style.display='none';
     $('step-create').style.display='none';
@@ -1468,13 +1497,7 @@ function runGame(n,b){var bs=document.querySelectorAll('.game-btn');
     else if(n==='snake')window.GAMES.startSnake();
     else if(n==='ttt')window.GAMES.startTicTacToe();
     else if(n==='memory')window.GAMES.startMemory();}
-function resizeGames(){if(currentGame==='snake'){var c=$('snake-canvas');
-    if(c){var s=Math.min(window.innerWidth-60,window.innerHeight-260,420);
-        c.style.width=s+'px';c.style.height=s+'px';}}
-    else if(currentGame==='pulya'){var c2=$('pulya-canvas');
-    if(c2){var mw=Math.min(window.innerWidth-60,420),mh=Math.min(window.innerHeight-260,520);
-        var w=mw,h=mh;if(w/h>0.8)w=h*0.8;else h=w/0.8;
-        c2.style.width=w+'px';c2.style.height=h+'px';}}}
+function resizeGames(){/* размеры задаются через CSS */}
 window.addEventListener('resize',resizeGames);
 
 function detectOS() {
@@ -1578,9 +1601,7 @@ GAMES.startPulya = function() {
     stage.appendChild(s);
     var canvas = document.createElement('canvas'); canvas.id='pulya-canvas';
     canvas.width=400; canvas.height=500;
-    var maxW=Math.min(window.innerWidth-60,420), maxH=Math.min(window.innerHeight-260,520);
-    var cw=maxW, ch=maxH; if (cw/ch>0.8) cw=ch*0.8; else ch=cw/0.8;
-    canvas.style.width=cw+'px'; canvas.style.height=ch+'px'; stage.appendChild(canvas);
+    stage.appendChild(canvas);
     var h = document.createElement('div'); h.className='swipe-hint';
     h.textContent='← → или A/D. На телефоне — водите пальцем.'; stage.appendChild(h);
     var ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
@@ -1671,8 +1692,7 @@ GAMES.startSnake = function() {
     var s=document.createElement('div');s.className='game-score';
     s.innerHTML='Счёт: <span id="snake-score">0</span> | Рекорд: <span id="snake-best">0</span>';stage.appendChild(s);
     var c=document.createElement('canvas');c.id='snake-canvas';c.width=400;c.height=400;
-    var sz=Math.min(window.innerWidth-60,window.innerHeight-260,420);
-    c.style.width=sz+'px';c.style.height=sz+'px';stage.appendChild(c);
+    stage.appendChild(c);
     var h=document.createElement('div');h.className='swipe-hint';
     h.textContent='Стрелки / WASD, свайпы на телефоне';stage.appendChild(h);
     var ctx=c.getContext('2d'),GRID=20,CELL=c.width/GRID;
@@ -1801,4 +1821,4 @@ GAMES.stop = function(){
 };
 </script>
 </body>
-    </html>
+                    </html>
