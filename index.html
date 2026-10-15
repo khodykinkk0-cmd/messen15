@@ -305,15 +305,6 @@ button.full { width: 100%; margin-top: 10px; }
                 <button type="button" class="big" onclick="showCreateRoom()" style="margin-top:12px;">🆕 Создать комнату</button>
                 <button type="button" class="big secondary" onclick="showJoinRoom()" style="margin-top:8px;">🔗 Присоединиться</button>
             </div>
-            <div class="step">
-                <h2>Профиль</h2>
-                <div id="profile-info" style="display:flex;align-items:center;gap:12px;"></div>
-                <button type="button" class="secondary full" onclick="editProfile()" style="margin-top:10px;">✏️ Редактировать профиль</button>
-                <div class="btn-row" style="margin-top:8px;">
-                    <button type="button" class="secondary" onclick="showMyId()" style="min-height:44px;font-size:13px;">🔑 Мой ID</button>
-                    <button type="button" class="secondary" onclick="openRestoreModal()" style="min-height:44px;font-size:13px;">♻️ Восстановить по ID</button>
-                </div>
-            </div>
         </div>
 
         <div class="step" id="step-create" style="display:none;">
@@ -897,8 +888,6 @@ function renderMainMenu() {
             list.appendChild(div);
         });
     }
-    var pi = $('profile-info');
-    pi.innerHTML = '<div style="font-size:32px;">' + myAvatar + '</div><div><div style="font-weight:bold;color:#ffdd88;font-size:16px;">' + escapeHtml(myName) + '</div><div style="font-size:12px;color:#889;">ID: ' + myId + '</div></div>';
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
