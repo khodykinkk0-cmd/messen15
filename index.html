@@ -22,6 +22,9 @@ html, body { height: 100%; background: #0a0f1e; color: #e0e6f0;
     overflow: hidden; }
 h1 { color: #ffaa44; font-size: 15px; text-align: center; margin-bottom: 8px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+#app-title { cursor: pointer; user-select: none; padding: 4px 10px; border-radius: 8px;
+    transition: 0.15s; display: inline-block; }
+#app-title:hover, #app-title:active { background: #1a2a3a; }
 #install-btn { background: linear-gradient(135deg, #44ff88, #22aa55);
     color: #0a0f1e; border: none; border-radius: 8px; padding: 6px 14px;
     font-size: 13px; font-weight: bold; cursor: pointer; font-family: inherit;
@@ -66,12 +69,10 @@ button.full { width: 100%; margin-top: 10px; }
     overflow: hidden; min-height: 0; }
 #chat-header { display: flex; justify-content: space-between; align-items: center;
     padding: 8px 10px; background: #0a0f1e; border-bottom: 1px solid #2a3a4a;
-    font-size: 12px; color: #88aacc; flex-shrink: 0; gap: 8px;
-    flex-wrap: nowrap; overflow-x: auto; }
+    font-size: 12px; color: #88aacc; flex-shrink: 0; gap: 8px; }
 #chat-header .room-code { font-family: monospace; font-weight: bold;
     color: #ffdd88; user-select: all; white-space: nowrap; }
-#chat-header .header-right {
-    display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+#chat-header .header-right { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
 .invite-btn { background: linear-gradient(135deg, #ffaa44, #ff7722);
     color: #0a0f1e; border: none; border-radius: 8px; padding: 6px 12px;
     font-size: 12px; font-weight: bold; cursor: pointer; font-family: inherit;
@@ -107,15 +108,17 @@ button.full { width: 100%; margin-top: 10px; }
     text-align: left; }
 #input-row button { flex: 0 0 auto; padding: 10px 16px; min-width: 54px; font-size: 18px; }
 #invite-modal, #confirm-modal, #sound-settings-modal, #profile-modal, #call-modal,
-#myid-modal, #restore-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+#myid-modal, #restore-modal, #account-modal, #logout-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.85); z-index: 200; align-items: center;
     justify-content: center; padding: 20px; overflow-y: auto; }
 #sound-settings-modal { z-index: 300; }
 #profile-modal, #call-modal { z-index: 400; }
 #myid-modal, #restore-modal { z-index: 500; }
+#account-modal, #logout-modal { z-index: 600; }
 #invite-modal.visible, #confirm-modal.visible, #sound-settings-modal.visible,
 #profile-modal.visible, #call-modal.visible,
-#myid-modal.visible, #restore-modal.visible { display: flex; }
+#myid-modal.visible, #restore-modal.visible,
+#account-modal.visible, #logout-modal.visible { display: flex; }
 .invite-card { background: #0f1722; border: 1px solid #2a3a4a; border-radius: 16px;
     padding: 20px; max-width: 420px; width: 100%; }
 .invite-card h3 { color: #ffaa44; font-size: 16px; margin-bottom: 12px; text-align: center; }
@@ -277,7 +280,7 @@ button.full { width: 100%; margin-top: 10px; }
 
 <div id="app">
     <h1>
-        🚀 Пуля
+        <span id="app-title" onclick="openAccountModal()">🚀 Пуля</span>
         <button type="button" id="install-btn" onclick="doInstall()">📥 Установить</button>
     </h1>
     <div id="status">Выберите действие</div>
@@ -421,8 +424,7 @@ button.full { width: 100%; margin-top: 10px; }
 
 <div id="call-modal">
     <div class="invite-card">
-        <div id="call-modal-content" style="text-align:center;">
-        </div>
+        <div id="call-modal-content" style="text-align:center;"></div>
     </div>
 </div>
 
@@ -455,6 +457,55 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
+<div id="account-modal">
+    <div class="invite-card">
+        <h3>👤 Аккаунт</h3>
+
+        <div style="display:flex; align-items:center; gap:16px; padding:14px 0; border-bottom:1px solid #2a3a4a;">
+            <div id="acc-avatar" style="font-size:56px; line-height:1;">😀</div>
+            <div style="flex:1; min-width:0;">
+                <div id="acc-name" style="font-size:20px; font-weight:bold; color:#ffdd88; word-break:break-word;">Аноним</div>
+                <div style="font-size:12px; color:#889; margin-top:4px;">Ваш профиль в Пуле</div>
+            </div>
+        </div>
+
+        <div style="padding:14px 0; border-bottom:1px solid #2a3a4a;">
+            <div style="font-size:12px; color:#889; margin-bottom:4px;">ID аккаунта</div>
+            <div id="acc-id" style="font-family:monospace; font-size:14px; color:#c0e0ff; word-break:break-all; user-select:all; -webkit-user-select:all;">id_xxxxxxxx</div>
+        </div>
+
+        <div style="padding:14px 0; border-bottom:1px solid #2a3a4a;">
+            <div style="font-size:12px; color:#889; margin-bottom:4px;">Мои комнаты</div>
+            <div id="acc-rooms-count" style="font-size:16px; color:#ffdd88;">0</div>
+        </div>
+
+        <div class="btn-row" style="margin-top:14px;">
+            <button type="button" class="secondary" onclick="closeAccountModal(); editProfile();">✏️ Изменить</button>
+            <button type="button" class="secondary" onclick="closeAccountModal(); showMyId();">🔑 ID</button>
+        </div>
+        <div class="btn-row" style="margin-top:8px;">
+            <button type="button" class="secondary" onclick="closeAccountModal(); openRestoreModal();">♻️ Восстановить</button>
+            <button type="button" class="secondary" onclick="confirmLogout()">🚪 Выйти</button>
+        </div>
+
+        <button type="button" class="close-btn" onclick="closeAccountModal()">Закрыть</button>
+    </div>
+</div>
+
+<div id="logout-modal">
+    <div class="invite-card">
+        <h3>Выйти из аккаунта?</h3>
+        <p style="text-align:center;color:#c0e0ff;font-size:14px;line-height:1.5;margin-bottom:14px;">
+            Профиль и список комнат будут удалены с этого устройства.<br>
+            <b>Сохраните свой ID</b>, чтобы восстановить их позже.
+        </p>
+        <div class="btn-row">
+            <button type="button" class="secondary" onclick="closeLogoutModal()">Отмена</button>
+            <button type="button" onclick="doLogout()">Выйти</button>
+        </div>
+    </div>
+</div>
+
 <div id="ios-install">
     <b>📥 Установить приложение</b><br>
     На iPhone/iPad: нажмите <b>«Поделиться»</b> в Safari (квадрат со стрелкой)<br>
@@ -480,7 +531,7 @@ button.full { width: 100%; margin-top: 10px; }
                 <li>Введите название (например, <code>Пуля</code>) → <b>«Установить»</b>.</li>
                 <li>Иконка появится на <b>рабочем столе</b> и в меню «Пуск».</li>
             </ol>
-            <div class="note">💡 Если в браузере нет кнопки установки — просто <b>создайте ярлык</b>: кликлите правой кнопкой на пустом месте рабочего стола → <b>«Создать»</b> → <b>«Ярлык»</b> → вставьте ссылку на Пулю → «Далее» → назовите «Пуля» → «Готово».</div>
+            <div class="note">💡 Если в браузере нет кнопки установки — просто <b>создайте ярлык</b>: кликните правой кнопкой на пустом месте рабочего стола → <b>«Создать»</b> → <b>«Ярлык»</b> → вставьте ссылку на Пулю → «Далее» → назовите «Пуля» → «Готово».</div>
         </div>
         <div class="install-panel" id="install-android">
             <p>Установите Пулю как <b>приложение на телефон Android</b>:</p>
@@ -523,15 +574,12 @@ window.onerror = function(msg, url, line) {
     return false;
 };
 
-// ============================================================
-//  ЕДИНЫЙ БРОКЕР ДЛЯ ВСЕХ — иначе пользователи не видят друг друга
-// ============================================================
 var BROKER = { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ' };
 
 var WORDS = ['moon','star','sun','fox','wolf','cat','bird','fire','ice','leaf','tree','rock','wave','snow','rain','wind','gold','blue','red','cyan','mint','kite','bell','lion','tiger','bear','fish','rose','lily','fern','pond','lake','river','peak','dune','sand','stone','flame','ember','cloud','storm'];
 
 var mqttClient = null;
-var topicMsg = null, topicPresence = null, topicCall = null;
+var topicMsg = null, topicPresenceWild = null, topicMyPresence = null, topicCall = null;
 var roomCode = null;
 var myId = (function(){
     var saved = localStorage.getItem('chat-my-id');
@@ -542,6 +590,8 @@ var myId = (function(){
 })();
 var heartbeatTimer = null, cleanupTimer = null;
 var peers = {};
+var pendingMessages = [];
+var basePresencePrefix = '';
 
 var deferredPrompt = null;
 
@@ -626,9 +676,7 @@ function saveProfile() {
         localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
     } catch (e) {}
     showMainMenu();
-    if (window._restoreMqtt && window._restoreMqtt.connected) {
-        publishProfileToCloud();
-    }
+    if (window._restoreMqtt && window._restoreMqtt.connected) publishProfileToCloud();
 }
 function renderAvatarPicker(containerId, selected) {
     var box = $(containerId);
@@ -665,10 +713,44 @@ function saveEditProfile() {
     try { localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar})); } catch (e) {}
     closeProfileModal();
     renderMainMenu();
-    if (mqttClient && mqttClient.connected) publishPresence('hello');
-    if (window._restoreMqtt && window._restoreMqtt.connected) {
-        publishProfileToCloud();
-    }
+    if (mqttClient && mqttClient.connected) publishPresence('presence');
+    if (window._restoreMqtt && window._restoreMqtt.connected) publishProfileToCloud();
+}
+
+// ============================================================
+//  АККАУНТ
+// ============================================================
+function openAccountModal() {
+    document.getElementById('acc-avatar').textContent = myAvatar || '😀';
+    document.getElementById('acc-name').textContent = myName || 'Аноним';
+    document.getElementById('acc-id').textContent = myId;
+    document.getElementById('acc-rooms-count').textContent = getRooms().length;
+    document.getElementById('account-modal').classList.add('visible');
+}
+function closeAccountModal() {
+    document.getElementById('account-modal').classList.remove('visible');
+}
+function confirmLogout() {
+    closeAccountModal();
+    document.getElementById('logout-modal').classList.add('visible');
+}
+function closeLogoutModal() {
+    document.getElementById('logout-modal').classList.remove('visible');
+}
+function doLogout() {
+    try {
+        localStorage.removeItem('chat-profile');
+        localStorage.removeItem('chat-rooms');
+        localStorage.removeItem('chat-my-id');
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('chat-history-') === 0) localStorage.removeItem(k);
+        }
+    } catch(e) {}
+
+    if (mqttClient) { try { mqttClient.end(true); } catch(e){} mqttClient = null; }
+    if (window._restoreMqtt) { try { window._restoreMqtt.end(true); } catch(e){} window._restoreMqtt = null; }
+    location.reload();
 }
 
 // ============================================================
@@ -678,9 +760,8 @@ var restoreClient = null;
 var restoreTimeout = null;
 
 function showMyId() {
-    var modal = document.getElementById('myid-modal');
     document.getElementById('myid-value').textContent = myId;
-    modal.classList.add('visible');
+    document.getElementById('myid-modal').classList.add('visible');
 }
 function closeMyIdModal() {
     document.getElementById('myid-modal').classList.remove('visible');
@@ -688,18 +769,12 @@ function closeMyIdModal() {
 function copyMyId(btn) {
     copyText(myId).then(function(ok){ flash(btn, ok ? '✅ Скопировано!' : '❌'); });
 }
-
 function publishProfileToCloud() {
     if (!window._restoreMqtt || !window._restoreMqtt.connected) return;
-    var data = {
-        name: myName,
-        avatar: myAvatar,
-        rooms: getRooms(),
-        id: myId
-    };
-    window._restoreMqtt.publish('superpulya-profile-' + myId, JSON.stringify(data));
+    window._restoreMqtt.publish('superpulya-profile-' + myId, JSON.stringify({
+        name: myName, avatar: myAvatar, rooms: getRooms(), id: myId
+    }), {retain: true, qos: 0});
 }
-
 function openRestoreModal() {
     document.getElementById('restore-input').value = '';
     document.getElementById('restore-status').textContent = 'Введите ID и нажмите «Найти»';
@@ -711,34 +786,25 @@ function closeRestoreModal() {
     if (restoreClient) { try { restoreClient.end(true); } catch(e){} restoreClient = null; }
     if (restoreTimeout) { clearTimeout(restoreTimeout); restoreTimeout = null; }
 }
-
 function doRestore() {
     var id = (document.getElementById('restore-input').value || '').trim();
     if (!id) { setRestoreStatus('Введите ID', '#ff6666'); return; }
     if (id === myId) { setRestoreStatus('Это ваш текущий ID', '#ffaa44'); return; }
-
     setRestoreStatus('⏳ Подключаюсь...', '#88aacc');
-
     if (restoreClient) { try { restoreClient.end(true); } catch(e){} }
-
     restoreClient = mqtt.connect(BROKER.url, {
         clientId: 'restore_' + Math.random().toString(36).slice(2, 12),
         clean: true, connectTimeout: 7000, reconnectPeriod: 0
     });
-
     restoreClient.on('connect', function() {
         setRestoreStatus('🔎 Ищу профиль...', '#ffaa44');
         restoreClient.subscribe('superpulya-profile-' + id, {qos: 0}, function() {
             restoreClient.publish('superpulya-restore-request-' + id, JSON.stringify({from: myId}));
         });
-
         restoreTimeout = setTimeout(function() {
-            if (restoreClient) {
-                setRestoreStatus('❌ Профиль не найден. Убедитесь, что владелец ID онлайн.', '#ff6666');
-            }
+            if (restoreClient) setRestoreStatus('❌ Профиль не найден. Убедитесь, что владелец ID онлайн.', '#ff6666');
         }, 10000);
     });
-
     restoreClient.on('message', function(topic, payload) {
         try {
             var data = JSON.parse(payload.toString());
@@ -748,36 +814,24 @@ function doRestore() {
             myAvatar = data.avatar || '😀';
             try {
                 localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
-                if (data.rooms && Array.isArray(data.rooms)) {
-                    saveRooms(data.rooms);
-                }
+                if (data.rooms && Array.isArray(data.rooms)) saveRooms(data.rooms);
             } catch(e) {}
             setRestoreStatus('✅ Профиль восстановлен!', '#44ff88');
-            setTimeout(function() {
-                closeRestoreModal();
-                showMainMenu();
-            }, 1200);
+            setTimeout(function() { closeRestoreModal(); showMainMenu(); }, 1200);
         } catch(e) {}
     });
-
-    restoreClient.on('error', function(err) {
-        setRestoreStatus('❌ Ошибка подключения', '#ff6666');
-    });
+    restoreClient.on('error', function() { setRestoreStatus('❌ Ошибка подключения', '#ff6666'); });
 }
-
 function setRestoreStatus(text, color) {
     var el = document.getElementById('restore-status');
     el.textContent = text;
     el.style.color = color || '#889';
 }
-
 function listenRestoreRequests() {
     if (!window._restoreMqtt || !window._restoreMqtt.connected) return;
     window._restoreMqtt.subscribe('superpulya-restore-request-' + myId, {qos: 0});
     window._restoreMqtt.on('message', function(topic, payload) {
-        if (topic === 'superpulya-restore-request-' + myId) {
-            publishProfileToCloud();
-        }
+        if (topic === 'superpulya-restore-request-' + myId) publishProfileToCloud();
     });
 }
 
@@ -862,6 +916,7 @@ function showMainMenu() {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     if (cleanupTimer) clearInterval(cleanupTimer);
     peers = {};
+    pendingMessages = [];
 
     if (!window._restoreMqtt) {
         window._restoreMqtt = mqtt.connect(BROKER.url, {
@@ -869,7 +924,6 @@ function showMainMenu() {
             clean: true, connectTimeout: 7000, reconnectPeriod: 5000
         });
         window._restoreMqtt.on('connect', function() {
-            console.log('Restore MQTT подключён');
             listenRestoreRequests();
             publishProfileToCloud();
         });
@@ -893,10 +947,7 @@ function showJoinRoom() {
     $('step-join').style.display = 'block';
     $('step-create').style.display = 'none';
 }
-function doEnter() {
-    if (!roomCode) return;
-    startRoom(roomCode);
-}
+function doEnter() { if (!roomCode) return; startRoom(roomCode); }
 function doJoin() {
     var c = ($('join-input').value || '').trim();
     if (!c) { showError('Введите код'); return; }
@@ -1064,33 +1115,25 @@ document.addEventListener('visibilitychange', function() {
 });
 
 // ============================================================
-//  MQTT — единый брокер для всех
+//  MQTT
 // ============================================================
 function connectBroker() {
     setStatus('⏳ Подключаюсь к ' + BROKER.name + '...', 'waiting');
-    var connected = false;
-    var timeout = setTimeout(function() {
-        if (connected) return;
-        setStatus('❌ Не удалось подключиться. Проверьте интернет.', 'error');
-    }, 10000);
 
     try {
         mqttClient = mqtt.connect(BROKER.url, {
             clientId: 'sp_' + myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10),
             clean: true,
-            reconnectPeriod: 3000,
+            reconnectPeriod: 2000,
             connectTimeout: 8000,
             keepalive: 30
         });
     } catch(e) {
-        clearTimeout(timeout);
         setStatus('❌ Ошибка: ' + e.message, 'error');
         return;
     }
 
     mqttClient.on('connect', function() {
-        connected = true;
-        clearTimeout(timeout);
         setStatus('🟢 Подключено (' + BROKER.name + ')', 'online');
         subscribeAll();
     });
@@ -1098,65 +1141,104 @@ function connectBroker() {
     mqttClient.on('reconnect', function() {
         setStatus('⏳ Переподключение...', 'waiting');
     });
-
     mqttClient.on('close', function() {
-        if (connected) setStatus('⏳ Соединение потеряно...', 'waiting');
+        setStatus('⏳ Соединение потеряно...', 'waiting');
     });
-
+    mqttClient.on('offline', function() {
+        setStatus('🔴 Оффлайн', 'error');
+    });
     mqttClient.on('error', function(err) {
         console.warn('MQTT error', err);
-        if (!connected) {
-            clearTimeout(timeout);
-            setStatus('❌ Ошибка подключения к ' + BROKER.name, 'error');
-        }
+        setStatus('❌ Ошибка: ' + (err.message || 'соединение'), 'error');
     });
 
     mqttClient.on('message', function(topic, payload) {
         try {
-            var data = JSON.parse(payload.toString());
+            var str = payload.toString();
+
+            if (topicPresenceWild && topic.indexOf(basePresencePrefix) === 0) {
+                if (!str) {
+                    var peerId = topic.split('/').pop();
+                    if (peerId && peers[peerId]) {
+                        var nm = peers[peerId].name;
+                        delete peers[peerId];
+                        renderParts();
+                        addSys(nm + ' отключился');
+                    }
+                    return;
+                }
+                var pdata = JSON.parse(str);
+                if (!pdata || pdata.id === myId) return;
+                var isNew = !peers[pdata.id];
+                peers[pdata.id] = {name: pdata.name, avatar: pdata.avatar || '😀', lastSeen: Date.now()};
+                renderParts();
+                if (isNew) addSys(pdata.name + ' присоединился');
+                return;
+            }
+
             if (topic === topicMsg) {
-                if (data.id === myId) return;
+                var data = JSON.parse(str);
+                if (!data || data.id === myId) return;
                 addMsg(data.text, data.name, false, data._t, false, data.avatar);
                 addToHistory({kind:'msg', name:data.name, text:data.text, isMe:false, t:data._t || Date.now(), avatar: data.avatar});
                 playNotify();
                 flashTitle(data.name + ': ' + data.text);
-            } else if (topic === topicPresence) {
-                if (data.id === myId) return;
-                var isNew = !peers[data.id];
-                peers[data.id] = {name: data.name, avatar: data.avatar || '😀', lastSeen: Date.now()};
-                renderParts();
-                if (isNew && data.kind === 'hello') {
-                    addSys(data.name + ' присоединился');
-                    // Отвечаем своим presence, чтобы новый гость увидел нас
-                    publishPresence('presence');
-                }
-            } else if (topic === topicCall) {
-                handleCallMessage(data);
+                return;
             }
-        } catch(e) {}
+
+            if (topic === topicCall) {
+                var cdata = JSON.parse(str);
+                handleCallMessage(cdata);
+                return;
+            }
+        } catch(e) { console.warn('parse error', e); }
     });
 }
 
 function subscribeAll() {
     var base = normTopic(roomCode);
     topicMsg = base + '/msg';
-    topicPresence = base + '/presence';
+    topicPresenceWild = base + '/presence/+';
+    topicMyPresence = base + '/presence/' + myId;
     topicCall = base + '/call';
-    mqttClient.subscribe([topicMsg, topicPresence, topicCall], {qos: 0}, function(err) {
+    basePresencePrefix = base + '/presence/';
+
+    mqttClient.subscribe([
+        {topic: topicMsg, qos: 1},
+        {topic: topicPresenceWild, qos: 1},
+        {topic: topicCall, qos: 1}
+    ], function(err) {
         if (err) { showError('Ошибка подписки'); return; }
+
         publishPresence('hello');
+        flushPending();
+
         if (heartbeatTimer) clearInterval(heartbeatTimer);
-        heartbeatTimer = setInterval(function(){ publishPresence('presence'); }, 10000);
+        heartbeatTimer = setInterval(function(){ publishPresence('presence'); }, 8000);
+
         if (cleanupTimer) clearInterval(cleanupTimer);
-        cleanupTimer = setInterval(cleanPeers, 6000);
+        cleanupTimer = setInterval(cleanPeers, 10000);
     });
 }
 
 function publishPresence(kind) {
-    if (!mqttClient || !mqttClient.connected) return;
-    mqttClient.publish(topicPresence, JSON.stringify({
+    if (!mqttClient || !mqttClient.connected || !topicMyPresence) return;
+    mqttClient.publish(topicMyPresence, JSON.stringify({
         kind: kind, id: myId, name: myName, avatar: myAvatar, _t: Date.now()
-    }));
+    }), {retain: true, qos: 1});
+}
+
+function clearMyPresence() {
+    if (!mqttClient || !mqttClient.connected || !topicMyPresence) return;
+    mqttClient.publish(topicMyPresence, '', {retain: true, qos: 1});
+}
+
+function flushPending() {
+    if (!mqttClient || !mqttClient.connected || !topicMsg) return;
+    while (pendingMessages.length > 0) {
+        var msg = pendingMessages.shift();
+        mqttClient.publish(topicMsg, JSON.stringify(msg), {qos: 1});
+    }
 }
 
 // ============================================================
@@ -1187,9 +1269,7 @@ function addMsg(t, sender, me, time, skipHistory, avatar){
     d.appendChild(tm);
     $('messages').appendChild(d);
     $('messages').scrollTop=$('messages').scrollHeight;
-    if (!skipHistory) {
-        addToHistory({kind:'msg', name: me ? myName : sender, text:t, isMe: !!me, t: time || Date.now(), avatar: avatar});
-    }
+    if (!skipHistory) addToHistory({kind:'msg', name: me ? myName : sender, text:t, isMe: !!me, t: time || Date.now(), avatar: avatar});
 }
 
 // ============================================================
@@ -1208,7 +1288,11 @@ function renderParts(){
 }
 function cleanPeers(){
     var now=Date.now(),ch=false;
-    for(var id in peers){ if(now-peers[id].lastSeen>40000){ var nm=peers[id].name; delete peers[id]; ch=true; addSys(nm+' отключился'); } }
+    for(var id in peers){
+        if(now-peers[id].lastSeen>50000){
+            var nm=peers[id].name; delete peers[id]; ch=true; addSys(nm+' отключился');
+        }
+    }
     if(ch)renderParts();
 }
 
@@ -1223,9 +1307,9 @@ var ICE_CONFIG = {
     ]
 };
 function publishCall(data) {
-    if (!mqttClient || !mqttClient.connected) return;
+    if (!mqttClient || !mqttClient.connected || !topicCall) return;
     data._t = Date.now();
-    mqttClient.publish(topicCall, JSON.stringify(data));
+    mqttClient.publish(topicCall, JSON.stringify(data), {qos: 1});
 }
 function startCall() {
     if (Object.keys(peers).length === 0) { showError('В комнате нет других участников'); return; }
@@ -1359,10 +1443,6 @@ function startRoom(c){
     setStatus('⏳ Подключаюсь...','waiting');
     if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
     $('setup').style.display = 'none';
-    $('profile-create').style.display='none';
-    $('main-menu').style.display='none';
-    $('step-create').style.display='none';
-    $('step-join').style.display='none';
     document.querySelector('h1').style.display='none';
     $('main').classList.add('visible');
     renderParts();
@@ -1374,24 +1454,47 @@ function startRoom(c){
 }
 function leaveRoom() {
     if (callActive) endCall();
-    if (mqttClient) { try { mqttClient.end(true); } catch(e){} mqttClient = null; }
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
-    if (cleanupTimer) clearInterval(cleanupTimer);
-    peers = {};
-    $('main').classList.remove('visible');
-    document.querySelector('h1').style.display='flex';
-    showMainMenu();
+    clearMyPresence();
+    setTimeout(function() {
+        if (mqttClient) { try { mqttClient.end(true); } catch(e){} mqttClient = null; }
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        if (cleanupTimer) clearInterval(cleanupTimer);
+        peers = {};
+        pendingMessages = [];
+        $('main').classList.remove('visible');
+        document.querySelector('h1').style.display='flex';
+        showMainMenu();
+    }, 200);
 }
 function doSend(){
     initAudio();
-    var i=$('msg-input'),t=(i.value||'').trim();if(!t)return;
-    if(!mqttClient||!mqttClient.connected){addSys('Нет соединения.');return;}
+    var i = $('msg-input');
+    var t = (i.value || '').trim();
+    if (!t) return;
+
     var ts = Date.now();
-    mqttClient.publish(topicMsg, JSON.stringify({
-        id:myId, name:myName, avatar:myAvatar, text:t, _t:ts
-    }));
-    addMsg(t,null,true,ts);
-    i.value='';if(i.blur)i.blur();
+    var msg = {
+        id: myId, name: myName, avatar: myAvatar,
+        text: t, _t: ts
+    };
+
+    addMsg(t, null, true, ts);
+    addToHistory({kind:'msg', name: myName, text: t, isMe: true, t: ts, avatar: myAvatar});
+    i.value = '';
+    if (i.blur) i.blur();
+
+    if (!mqttClient || !mqttClient.connected) {
+        pendingMessages.push(msg);
+        addSys('Нет соединения. Сообщение отправится при подключении.');
+        return;
+    }
+
+    mqttClient.publish(topicMsg, JSON.stringify(msg), {qos: 1}, function(err) {
+        if (err) {
+            pendingMessages.push(msg);
+            addSys('Ошибка отправки. Повторю при подключении.');
+        }
+    });
 }
 function doCopyCode(b){copyText($('room-code').textContent).then(function(ok){flash(b,ok?'✅ Скопировано!':'❌');});}
 function doShareCode(b){var c=$('room-code').textContent;
@@ -1439,7 +1542,7 @@ function closeInstallModal() { $('install-modal').classList.remove('visible'); }
 //  ИНИЦИАЛИЗАЦИЯ
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    var modals = ['install-modal','confirm-modal','sound-settings-modal','profile-modal','call-modal','invite-modal','myid-modal','restore-modal'];
+    var modals = ['install-modal','confirm-modal','sound-settings-modal','profile-modal','call-modal','invite-modal','myid-modal','restore-modal','account-modal','logout-modal'];
     modals.forEach(function(id) {
         var m = document.getElementById(id);
         if (m) m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('visible'); });
@@ -1466,7 +1569,11 @@ setTimeout(function(){var e;
 document.addEventListener('click', function() { initAudio(); }, { once: true });
 document.addEventListener('touchstart', function() { initAudio(); }, { once: true });
 
+window.addEventListener('beforeunload', function() {
+    clearMyPresence();
+});
+
 if(!window.isSecureContext)setTimeout(function(){showError('Нужен HTTPS.');},200);
 </script>
 </body>
-    </html>
+</html>
