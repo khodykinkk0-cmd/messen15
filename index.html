@@ -550,7 +550,7 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
-<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js" crossorigin="anonymous"></script>
 <script>
 'use strict';
 
@@ -561,6 +561,7 @@ function showError(msg) {
     showError._t = setTimeout(function(){ bar.style.display = 'none'; }, 6000);
 }
 window.onerror = function(msg, url, line) {
+    if (line === 0 || msg === 'Script error.' || msg === 'Script error') return true;
     showError('Ошибка: ' + msg + ' (строка ' + line + ')');
     return false;
 };
@@ -579,10 +580,15 @@ var myId = (function(){
     try { localStorage.setItem('chat-my-id', newId); } catch(e) {}
     return newId;
 })();
+// Стабильный clientId для этой вкладки — сохраняется между реконнектами,
+// чтобы брокер мог досылать недоставленные QoS-1 сообщения.
+var MQTT_CLIENT_ID = 'sp_' + myId + '_' + Math.random().toString(36).slice(2, 10);
 var heartbeatTimer = null, cleanupTimer = null;
 var peers = {};
 var pendingMessages = [];
 var basePresencePrefix = '';
+// Дедупликация входящих сообщений (QoS 1 = at-least-once → возможны дубли)
+var seenMsgIds = {};
 
 var deferredPrompt = null;
 
@@ -608,6 +614,7 @@ function genCode(){
     return w1+'-'+w2+'-'+Math.floor(Math.random()*90+10);
 }
 function normTopic(c){return 'superpulya-' + String(c).toLowerCase().replace(/[^a-z0-9]/g,'');}
+function genMsgId(){return myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);}
 function copyText(t){
     return new Promise(function(res){
         if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -1111,11 +1118,12 @@ function connectBroker() {
 
     try {
         mqttClient = mqtt.connect(BROKER.url, {
-            clientId: 'sp_' + myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10),
-            clean: true,
+            clientId: MQTT_CLIENT_ID,
+            clean: false,             // сохраняем сессию — QoS 1 досылает при реконнекте
             reconnectPeriod: 2000,
             connectTimeout: 8000,
-            keepalive: 30
+            keepalive: 30,
+            resubscribe: true
         });
     } catch(e) {
         setStatus('❌ Ошибка: ' + e.message, 'error');
@@ -1168,8 +1176,20 @@ function connectBroker() {
             if (topic === topicMsg) {
                 var data = JSON.parse(str);
                 if (!data || data.id === myId) return;
+
+                // ДЕДУПЛИКАЦИЯ: QoS 1 = at-least-once, одно сообщение может прийти дважды
+                if (data._mid) {
+                    if (seenMsgIds[data._mid]) return;
+                    seenMsgIds[data._mid] = Date.now();
+                    // чистим старые записи (>5 минут)
+                    var now = Date.now();
+                    for (var k in seenMsgIds) {
+                        if (now - seenMsgIds[k] > 300000) delete seenMsgIds[k];
+                    }
+                }
+
                 addMsg(data.text, data.name, false, data._t, false, data.avatar);
-                addToHistory({kind:'msg', name:data.name, text:data.text, isMe:false, t:data._t || Date.now(), avatar: data.avatar});
+                addToHistory({kind:'msg', name:data.name, text:data.text, isMe:false, t:data._t || Date.now(), avatar: data.avatar, mid: data._mid});
                 playNotify();
                 flashTitle(data.name + ': ' + data.text);
                 return;
@@ -1462,17 +1482,22 @@ function doSend(){
     if (!t) return;
 
     var ts = Date.now();
+    var mid = genMsgId();
     var msg = {
         id: myId, name: myName, avatar: myAvatar,
-        text: t, _t: ts
+        text: t, _t: ts, _mid: mid
     };
 
+    // Помечаем своё сообщение как «уже виденное», чтобы брокер не показал его нам как входящее
+    seenMsgIds[mid] = Date.now();
+
     addMsg(t, null, true, ts);
-    addToHistory({kind:'msg', name: myName, text: t, isMe: true, t: ts, avatar: myAvatar});
+    addToHistory({kind:'msg', name: myName, text: t, isMe: true, t: ts, avatar: myAvatar, mid: mid});
     i.value = '';
     if (i.blur) i.blur();
 
-    if (!mqttClient || !mqttClient.connected) {
+    // Если соединения или топика ещё нет — в очередь
+    if (!mqttClient || !mqttClient.connected || !topicMsg) {
         pendingMessages.push(msg);
         addSys('Нет соединения. Сообщение отправится при подключении.');
         return;
@@ -1565,4 +1590,4 @@ window.addEventListener('beforeunload', function() {
 if(!window.isSecureContext)setTimeout(function(){showError('Нужен HTTPS.');},200);
 </script>
 </body>
-</html>
+                </html>
