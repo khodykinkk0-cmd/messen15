@@ -185,7 +185,6 @@ button.full { width: 100%; margin-top: 10px; }
 .sound-choice .sub { font-size: 11px; color: #889; display: block; margin-top: 2px; }
 .sound-choice.danger .icon-play { color: #ff7777; }
 
-/* DM chat modal */
 #dm-chat-modal {
     display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.9); z-index: 800;
@@ -229,7 +228,6 @@ button.full { width: 100%; margin-top: 10px; }
     flex: 0 0 auto; padding: 10px 16px; min-width: 54px; font-size: 18px;
 }
 
-/* Blacklist item row */
 .bl-item, .dm-thread-item {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 12px; background: #1a2a3a;
@@ -247,6 +245,17 @@ button.full { width: 100%; margin-top: 10px; }
     flex: 0 0 auto; min-height: 34px; padding: 6px 12px; font-size: 13px;
 }
 .empty-note { color: #668; text-align: center; font-size: 13px; padding: 20px 0; }
+
+.restore-note {
+    background: #0a2a1a; border-left: 3px solid #44ff88;
+    padding: 10px 12px; border-radius: 6px;
+    margin-bottom: 12px; font-size: 12px; color: #c0ffd0; line-height: 1.5;
+}
+.device-note {
+    background: #1a2a3a; border-left: 3px solid #88aacc;
+    padding: 8px 10px; border-radius: 6px;
+    margin-bottom: 10px; font-size: 11px; color: #c0e0ff; line-height: 1.5;
+}
 </style>
 </head>
 <body>
@@ -411,9 +420,9 @@ button.full { width: 100%; margin-top: 10px; }
 <div id="restore-modal">
     <div class="invite-card">
         <h3>♻️ Восстановление по ID</h3>
-        <p style="text-align:center;color:#889;font-size:13px;margin-bottom:12px;">
-            Введите ID, чтобы загрузить профиль и комнаты. Владелец ID должен быть онлайн.
-        </p>
+        <div class="restore-note">
+            💾 Резервная копия профиля хранится на сервере. Восстановление работает, даже если владелец ID сейчас <b>офлайн</b>.
+        </div>
         <input id="restore-input" type="text" placeholder="id_xxxxxxxx"
                autocomplete="off" autocapitalize="off"
                style="text-align:center;text-transform:none;font-size:14px;">
@@ -471,9 +480,14 @@ button.full { width: 100%; margin-top: 10px; }
 <div id="settings-modal">
     <div class="invite-card">
         <h3>⚙️ Настройки</h3>
+        <div class="device-note">🖥️ Все режимы и настройки ниже применяются <b>только к этому устройству</b> и не синхронизируются с другими.</div>
         <button type="button" class="sound-choice" id="incognito-btn" onclick="toggleIncognito()">
             <span class="icon-play">🥷</span>
             <span class="title">Режим инкогнито <span class="sub" id="incognito-status">Выключен</span></span>
+        </button>
+        <button type="button" class="sound-choice" id="incognito2-btn" onclick="toggleIncognito2()">
+            <span class="icon-play">👻</span>
+            <span class="title">Режим инкогнито 2 <span class="sub" id="incognito2-status">Выключен</span></span>
         </button>
         <button type="button" class="sound-choice" onclick="openBlacklistModal()">
             <span class="icon-play">🚫</span>
@@ -691,9 +705,15 @@ function plural(n, one, few, many) {
 }
 
 // ============================================================
-//  ИНКОГНИТО
+//  ИНКОГНИТО (обычный + инкогнито 2)
+//  ВАЖНО: оба режима — ЛОКАЛЬНЫЕ для ЭТОГО устройства.
+//  Флаг chat-incognito2 живёт в localStorage и НИКОГДА не
+//  публикуется в облако. На других устройствах он не появится.
 // ============================================================
 var incognito = localStorage.getItem('chat-incognito') === 'on';
+var incognito2 = false;
+try { incognito2 = localStorage.getItem('chat-incognito2') === 'on'; } catch(e){}
+var memRooms = [];
 
 function getDisplayName() { return incognito ? 'Аноним' : myName; }
 function getDisplayAvatar() { return incognito ? '🥷' : myAvatar; }
@@ -704,7 +724,48 @@ function toggleIncognito() {
     updateSettingsUI();
     renderParts();
     if (mqttClient && mqttClient.connected) publishPresence('presence');
-    showError(incognito ? '🥷 Режим инкогнито включён' : 'Инкогнито выключен');
+    showError(incognito ? '🥷 Режим инкогнито включён (только на этом устройстве)' : 'Инкогнито выключен');
+}
+
+function toggleIncognito2() {
+    if (!incognito2) {
+        // ВКЛЮЧАЕМ на ЭТОМ устройстве.
+        // Флаг сохраняем локально — на других устройствах он не появится.
+        var currentRooms = getRooms();
+        incognito2 = true;
+        memRooms = currentRooms.slice();
+        try { localStorage.setItem('chat-incognito2', 'on'); } catch(e) {}
+        try {
+            localStorage.removeItem('chat-profile');
+            localStorage.removeItem('chat-rooms');
+            for (var i = localStorage.length - 1; i >= 0; i--) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('chat-history-') === 0) localStorage.removeItem(k);
+            }
+        } catch(e) {}
+        // ВАЖНО: облачную копию тоже убираем — иначе к ней можно
+        // будет восстановиться с другого устройства по ID.
+        if (window._restoreMqtt && window._restoreMqtt.connected) {
+            try {
+                window._restoreMqtt.publish('superpulya-profile-' + myId, '', {retain: true, qos: 1});
+            } catch(e) {}
+        }
+        showError('👻 Инкогнито 2 включён (только на этом устройстве)');
+    } else {
+        incognito2 = false;
+        try { localStorage.removeItem('chat-incognito2'); } catch(e) {}
+        try {
+            if (myName) localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
+            localStorage.setItem('chat-rooms', JSON.stringify(memRooms));
+            if (HISTORY_KEY && historyCache.length > 0) {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(historyCache));
+            }
+        } catch(e) {}
+        showError('Инкогнито 2 выключен на этом устройстве');
+    }
+    updateSettingsUI();
+    if (window._restoreMqtt && window._restoreMqtt.connected) publishProfileToCloud();
+    if (mqttClient && mqttClient.connected) publishPresence('presence');
 }
 
 // ============================================================
@@ -760,6 +821,7 @@ function loadDm(peerId) {
     } catch(e) { return []; }
 }
 function saveDm(peerId, arr) {
+    if (incognito2) return;
     try { localStorage.setItem(dmKey(peerId), JSON.stringify(arr.slice(-200))); } catch(e) {}
 }
 function getDmPeersMap() {
@@ -769,6 +831,7 @@ function getDmPeersMap() {
     } catch(e) { return {}; }
 }
 function saveDmPeersMap(o) {
+    if (incognito2) return;
     try { localStorage.setItem('chat-dm-peers', JSON.stringify(o)); } catch(e) {}
 }
 function getDmThreads() {
@@ -803,7 +866,6 @@ function openDmChat(peerId, peerName, peerAvatar) {
     dmPeerId = peerId;
     dmPeerName = peerName || peerId;
     dmPeerAvatar = peerAvatar || '😀';
-    // сохраняем имя пира
     var m = getDmPeersMap();
     m[peerId] = { name: dmPeerName, avatar: dmPeerAvatar };
     saveDmPeersMap(m);
@@ -906,7 +968,9 @@ function handleDmIncoming(d) {
 // ============================================================
 function updateSettingsUI() {
     var inc = $('incognito-status');
-    if (inc) inc.textContent = incognito ? 'Включён' : 'Выключен';
+    if (inc) inc.textContent = incognito ? 'Включён (только на этом устройстве)' : 'Выключен';
+    var inc2 = $('incognito2-status');
+    if (inc2) inc2.textContent = incognito2 ? 'Включён (только на этом устройстве)' : 'Выключен';
     var bl = $('blacklist-count');
     if (bl) {
         var n = getBlacklist().length;
@@ -1038,6 +1102,7 @@ var myAvatar = '😀';
 var AVATARS = ['😀','😎','🐱','🐶','🦊','🐼','🐨','🦁','🐸','🐵','🐰','🐻','🐷','🐔','🦄','🐙','🦋','🌟','⚡','🔥','💎','🚀','🎮','🎵'];
 
 function loadProfile() {
+    if (incognito2) return false;
     try {
         var data = localStorage.getItem('chat-profile');
         if (data) {
@@ -1056,9 +1121,11 @@ function saveProfile() {
     var av = avatar ? avatar.dataset.avatar : '😀';
     myName = name;
     myAvatar = av;
-    try {
-        localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
-    } catch (e) {}
+    if (!incognito2) {
+        try {
+            localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
+        } catch (e) {}
+    }
     showMainMenu();
     if (window._restoreMqtt && window._restoreMqtt.connected) publishProfileToCloud();
 }
@@ -1094,7 +1161,9 @@ function saveEditProfile() {
     var av = avatar ? avatar.dataset.avatar : myAvatar;
     myName = name;
     myAvatar = av;
-    try { localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar})); } catch (e) {}
+    if (!incognito2) {
+        try { localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar})); } catch (e) {}
+    }
     closeProfileModal();
     renderMainMenu();
     renderParts();
@@ -1128,6 +1197,7 @@ function doLogout() {
         localStorage.removeItem('chat-rooms');
         localStorage.removeItem('chat-my-id');
         localStorage.removeItem('chat-incognito');
+        localStorage.removeItem('chat-incognito2');
         localStorage.removeItem('chat-blacklist');
         localStorage.removeItem('chat-blacklist-names');
         localStorage.removeItem('chat-dm-peers');
@@ -1143,10 +1213,11 @@ function doLogout() {
 }
 
 // ============================================================
-//  ВОССТАНОВЛЕНИЕ ПО ID
+//  ВОССТАНОВЛЕНИЕ ПО ID  (работает, даже если владелец офлайн)
 // ============================================================
 var restoreClient = null;
 var restoreTimeout = null;
+var restoreId = null;
 
 function showMyId() {
     document.getElementById('myid-value').textContent = myId;
@@ -1159,10 +1230,15 @@ function copyMyId(btn) {
     copyText(myId).then(function(ok){ flash(btn, ok ? '✅ Скопировано!' : '❌'); });
 }
 function publishProfileToCloud() {
+    // Инкогнито 2 — не публикуем и не трогаем облако.
+    if (incognito2) return;
     if (!window._restoreMqtt || !window._restoreMqtt.connected) return;
+    // retain + qos 1 => копия хранится на брокере, даже когда владелец офлайн.
+    // Флаг incognito2 НЕ включается в данные — он остаётся только локальным.
     window._restoreMqtt.publish('superpulya-profile-' + myId, JSON.stringify({
-        name: myName, avatar: myAvatar, rooms: getRooms(), id: myId
-    }), {retain: true, qos: 0});
+        name: myName, avatar: myAvatar, rooms: getRooms(), id: myId,
+        backupAt: Date.now()
+    }), {retain: true, qos: 1});
 }
 function openRestoreModal() {
     document.getElementById('restore-input').value = '';
@@ -1174,42 +1250,58 @@ function closeRestoreModal() {
     document.getElementById('restore-modal').classList.remove('visible');
     if (restoreClient) { try { restoreClient.end(true); } catch(e){} restoreClient = null; }
     if (restoreTimeout) { clearTimeout(restoreTimeout); restoreTimeout = null; }
+    restoreId = null;
 }
 function doRestore() {
     var id = (document.getElementById('restore-input').value || '').trim();
     if (!id) { setRestoreStatus('Введите ID', '#ff6666'); return; }
     if (id === myId) { setRestoreStatus('Это ваш текущий ID', '#ffaa44'); return; }
-    setRestoreStatus('⏳ Подключаюсь...', '#88aacc');
+    restoreId = id;
+    setRestoreStatus('⏳ Подключаюсь к серверу...', '#88aacc');
     if (restoreClient) { try { restoreClient.end(true); } catch(e){} }
     restoreClient = mqtt.connect(BROKER.url, {
         clientId: 'restore_' + Math.random().toString(36).slice(2, 12),
         clean: true, connectTimeout: 7000, reconnectPeriod: 0
     });
     restoreClient.on('connect', function() {
-        setRestoreStatus('🔎 Ищу профиль...', '#ffaa44');
-        restoreClient.subscribe('superpulya-profile-' + id, {qos: 0}, function() {
-            restoreClient.publish('superpulya-restore-request-' + id, JSON.stringify({from: myId}));
+        setRestoreStatus('💾 Читаю резервную копию...', '#ffaa44');
+        restoreClient.subscribe('superpulya-profile-' + id, {qos: 1}, function(err) {
+            if (err) { setRestoreStatus('❌ Не удалось подписаться', '#ff6666'); return; }
+            try {
+                restoreClient.publish('superpulya-restore-request-' + id, JSON.stringify({from: myId}), {qos: 0});
+            } catch(e) {}
         });
         restoreTimeout = setTimeout(function() {
-            if (restoreClient) setRestoreStatus('❌ Профиль не найден. Убедитесь, что владелец ID онлайн.', '#ff6666');
-        }, 10000);
+            if (restoreClient) {
+                setRestoreStatus('❌ Резервная копия не найдена. Проверьте ID — возможно, опечатка.', '#ff6666');
+            }
+        }, 15000);
     });
     restoreClient.on('message', function(topic, payload) {
         try {
-            var data = JSON.parse(payload.toString());
-            if (!data.name) return;
+            var raw = payload.toString();
+            if (!raw) return;
+            var data = JSON.parse(raw);
+            if (!data || !data.name) return;
             if (restoreTimeout) { clearTimeout(restoreTimeout); restoreTimeout = null; }
             myName = data.name;
             myAvatar = data.avatar || '😀';
+            // ВАЖНО: инкогнито-флаги НЕ восстанавливаются из облака.
+            // Они всегда остаются такими, какими их установил пользователь
+            // НА ЭТОМ устройстве (или по умолчанию — выключены).
             try {
-                localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
-                if (data.rooms && Array.isArray(data.rooms)) saveRooms(data.rooms);
+                if (!incognito2) {
+                    localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
+                    if (data.rooms && Array.isArray(data.rooms)) saveRooms(data.rooms);
+                } else {
+                    if (data.rooms && Array.isArray(data.rooms)) memRooms = data.rooms.slice();
+                }
             } catch(e) {}
             setRestoreStatus('✅ Профиль восстановлен!', '#44ff88');
             setTimeout(function() { closeRestoreModal(); showMainMenu(); }, 1200);
         } catch(e) {}
     });
-    restoreClient.on('error', function() { setRestoreStatus('❌ Ошибка подключения', '#ff6666'); });
+    restoreClient.on('error', function() { setRestoreStatus('❌ Ошибка подключения к серверу', '#ff6666'); });
 }
 function setRestoreStatus(text, color) {
     var el = document.getElementById('restore-status');
@@ -1233,6 +1325,7 @@ var lastRenderedDay = null;
 var HISTORY_KEY = null;
 
 function getRooms() {
+    if (incognito2) return memRooms.slice();
     try {
         var d = localStorage.getItem('chat-rooms');
         if (d) return JSON.parse(d) || [];
@@ -1240,6 +1333,7 @@ function getRooms() {
     return [];
 }
 function saveRooms(arr) {
+    if (incognito2) { memRooms = arr.slice(); return; }
     try { localStorage.setItem('chat-rooms', JSON.stringify(arr)); } catch (e) {}
 }
 function addRoom(code) {
@@ -1279,7 +1373,9 @@ function renderMainMenu() {
             del.style.cssText='flex:0 0 auto;min-height:36px;padding:6px 10px;font-size:13px;background:#3a2a2a;color:#ff8888;';
             del.onclick = function() {
                 removeRoom(r);
-                try { localStorage.removeItem('chat-history-' + normTopic(r)); } catch(e){}
+                if (!incognito2) {
+                    try { localStorage.removeItem('chat-history-' + normTopic(r)); } catch(e){}
+                }
                 renderMainMenu();
             };
             div.appendChild(del);
@@ -1345,6 +1441,7 @@ function joinExistingRoom(r) { startRoom(r); }
 //  ИСТОРИЯ
 // ============================================================
 function loadHistory() {
+    if (incognito2) return [];
     if (!HISTORY_KEY) return [];
     try {
         var raw = localStorage.getItem(HISTORY_KEY);
@@ -1354,6 +1451,7 @@ function loadHistory() {
     } catch (e) { return []; }
 }
 function saveHistory() {
+    if (incognito2) return;
     if (!HISTORY_KEY) return;
     try {
         if (historyCache.length > HISTORY_LIMIT) historyCache = historyCache.slice(-HISTORY_LIMIT);
@@ -1374,7 +1472,9 @@ function addToHistory(entry) {
 function clearHistory() {
     if (!HISTORY_KEY) return;
     historyCache = [];
-    try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
+    if (!incognito2) {
+        try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
+    }
     $('messages').innerHTML = '';
     lastRenderedDay = null;
 }
@@ -1556,7 +1656,7 @@ function connectBroker() {
                 }
                 var pdata = JSON.parse(str);
                 if (!pdata || pdata.id === myId) return;
-                if (isBlacklisted(pdata.id)) return;   // <-- блокировка
+                if (isBlacklisted(pdata.id)) return;
                 var isNew = !peers[pdata.id];
                 peers[pdata.id] = {name: pdata.name, avatar: pdata.avatar || '😀', lastSeen: Date.now()};
                 renderParts();
@@ -1567,7 +1667,7 @@ function connectBroker() {
             if (topic === topicMsg) {
                 var data = JSON.parse(str);
                 if (!data || data.id === myId) return;
-                if (isBlacklisted(data.id)) return;    // <-- блокировка
+                if (isBlacklisted(data.id)) return;
                 if (data._mid) {
                     if (seenMsgIds[data._mid]) return;
                     seenMsgIds[data._mid] = Date.now();
@@ -1986,7 +2086,7 @@ setTimeout(function(){var e;
     e=$('profile-name');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();saveProfile();}});
     e=$('edit-profile-name');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();saveEditProfile();}});
     e=$('join-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doJoin();}});
-    e=$('msg-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doSend();}});
+    e=$('msg-input');if(e)e.addEventListener('keydown',function(ev){if>(ev.key==='Enter'){ev.preventDefault();doSend();}});
     e=$('dm-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();sendDm();}});
 },100);
 
@@ -2000,4 +2100,4 @@ window.addEventListener('beforeunload', function() {
 if(!window.isSecureContext)setTimeout(function(){showError('Нужен HTTPS.');},200);
 </script>
 </body>
-</html>
+                    </html
