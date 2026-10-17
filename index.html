@@ -279,6 +279,10 @@ button.full { width: 100%; margin-top: 10px; }
                 <label style="display:block;margin-top:14px;font-size:13px;color:#889;">Аватар (эмодзи):</label>
                 <div id="avatar-picker" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
                 <button type="button" onclick="saveProfile()" class="full">Сохранить профиль</button>
+                <button type="button" onclick="openRestoreModal()" class="secondary full" style="margin-top:10px;">♻️ Восстановить по ID</button>
+                <p class="hint" style="text-align:center;margin-top:10px;">
+                    Уже есть ID от старого устройства? Восстановите <b>профиль и комнаты</b> по нему — даже если старое устройство офлайн.
+                </p>
             </div>
         </div>
 
@@ -706,9 +710,6 @@ function plural(n, one, few, many) {
 
 // ============================================================
 //  ИНКОГНИТО (обычный + инкогнито 2)
-//  ВАЖНО: оба режима — ЛОКАЛЬНЫЕ для ЭТОГО устройства.
-//  Флаг chat-incognito2 живёт в localStorage и НИКОГДА не
-//  публикуется в облако. На других устройствах он не появится.
 // ============================================================
 var incognito = localStorage.getItem('chat-incognito') === 'on';
 var incognito2 = false;
@@ -729,8 +730,6 @@ function toggleIncognito() {
 
 function toggleIncognito2() {
     if (!incognito2) {
-        // ВКЛЮЧАЕМ на ЭТОМ устройстве.
-        // Флаг сохраняем локально — на других устройствах он не появится.
         var currentRooms = getRooms();
         incognito2 = true;
         memRooms = currentRooms.slice();
@@ -743,8 +742,6 @@ function toggleIncognito2() {
                 if (k && k.indexOf('chat-history-') === 0) localStorage.removeItem(k);
             }
         } catch(e) {}
-        // ВАЖНО: облачную копию тоже убираем — иначе к ней можно
-        // будет восстановиться с другого устройства по ID.
         if (window._restoreMqtt && window._restoreMqtt.connected) {
             try {
                 window._restoreMqtt.publish('superpulya-profile-' + myId, '', {retain: true, qos: 1});
@@ -1213,7 +1210,7 @@ function doLogout() {
 }
 
 // ============================================================
-//  ВОССТАНОВЛЕНИЕ ПО ID  (работает, даже если владелец офлайн)
+//  ВОССТАНОВЛЕНИЕ ПО ID
 // ============================================================
 var restoreClient = null;
 var restoreTimeout = null;
@@ -1230,11 +1227,8 @@ function copyMyId(btn) {
     copyText(myId).then(function(ok){ flash(btn, ok ? '✅ Скопировано!' : '❌'); });
 }
 function publishProfileToCloud() {
-    // Инкогнито 2 — не публикуем и не трогаем облако.
     if (incognito2) return;
     if (!window._restoreMqtt || !window._restoreMqtt.connected) return;
-    // retain + qos 1 => копия хранится на брокере, даже когда владелец офлайн.
-    // Флаг incognito2 НЕ включается в данные — он остаётся только локальным.
     window._restoreMqtt.publish('superpulya-profile-' + myId, JSON.stringify({
         name: myName, avatar: myAvatar, rooms: getRooms(), id: myId,
         backupAt: Date.now()
@@ -1286,9 +1280,6 @@ function doRestore() {
             if (restoreTimeout) { clearTimeout(restoreTimeout); restoreTimeout = null; }
             myName = data.name;
             myAvatar = data.avatar || '😀';
-            // ВАЖНО: инкогнито-флаги НЕ восстанавливаются из облака.
-            // Они всегда остаются такими, какими их установил пользователь
-            // НА ЭТОМ устройстве (или по умолчанию — выключены).
             try {
                 if (!incognito2) {
                     localStorage.setItem('chat-profile', JSON.stringify({name: myName, avatar: myAvatar}));
@@ -2086,7 +2077,7 @@ setTimeout(function(){var e;
     e=$('profile-name');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();saveProfile();}});
     e=$('edit-profile-name');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();saveEditProfile();}});
     e=$('join-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doJoin();}});
-    e=$('msg-input');if(e)e.addEventListener('keydown',function(ev){if>(ev.key==='Enter'){ev.preventDefault();doSend();}});
+    e=$('msg-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();doSend();}});
     e=$('dm-input');if(e)e.addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();sendDm();}});
 },100);
 
@@ -2100,4 +2091,4 @@ window.addEventListener('beforeunload', function() {
 if(!window.isSecureContext)setTimeout(function(){showError('Нужен HTTPS.');},200);
 </script>
 </body>
-</html
+</html>
