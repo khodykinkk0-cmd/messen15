@@ -1,22 +1,15 @@
 {
+  "name": "Пуля — мессенджер",
+  "short_name": "Пуля",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0f1e",
+  "theme_color": "#0a0f1e",
+  "icons": [
     {
-    "name": "Пуля — мессенджер",
-    "short_name": "Пуля",
-    "description": "Мессенджер со звонками и мини-играми",
-    "start_url": "/messen15/",
-    "scope": "/messen15/",
-    "id": "/messen15/",
-    "display": "standalone",
-    "orientation": "portrait",
-    "background_color": "#0a0f1e",
-    "theme_color": "#0a0f1e",
-    "lang": "ru",
-    "dir": "ltr",
-    "categories": ["social", "games"],
-    "icons": [
-        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-        { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-        { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-    ]
-}
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wn5qAPC90ZXh0Pjwvc3ZnPg==",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
 }
