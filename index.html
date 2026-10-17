@@ -485,14 +485,17 @@ button.full { width: 100%; margin-top: 10px; }
     <div class="invite-card">
         <h3>⚙️ Настройки</h3>
         <div class="device-note">🖥️ Все режимы и настройки ниже применяются <b>только к этому устройству</b> и не синхронизируются с другими.</div>
+        
         <button type="button" class="sound-choice" id="incognito-btn" onclick="toggleIncognito()">
             <span class="icon-play">🥷</span>
             <span class="title">Режим инкогнито <span class="sub" id="incognito-status">Выключен</span></span>
         </button>
+        
         <button type="button" class="sound-choice" id="incognito2-btn" onclick="toggleIncognito2()">
             <span class="icon-play">👻</span>
             <span class="title">Режим инкогнито 2 <span class="sub" id="incognito2-status">Выключен</span></span>
         </button>
+
         <button type="button" class="sound-choice" onclick="openBlacklistModal()">
             <span class="icon-play">🚫</span>
             <span class="title">Чёрный список <span class="sub" id="blacklist-count">Пусто</span></span>
