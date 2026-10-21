@@ -1,15 +1,12 @@
-{
-  "name": "Пуля — мессенджер",
-  "short_name": "Пуля",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#0a0f1e",
-  "theme_color": "#0a0f1e",
   "icons": [
     {
-      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wn5qAPC90ZXh0Pjwvc3ZnPg==",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
-}
