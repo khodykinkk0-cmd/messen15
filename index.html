@@ -629,7 +629,14 @@ window.onerror = function(msg, url, line) {
     return false;
 };
 
-var BROKER = { url: 'wss://broker.hivemq.com:8884/mqtt', name: 'HiveMQ' };
+// ИЗМЕНЕНИЕ: передаем параметры подключения в виде объекта
+var BROKER = {
+    protocol: 'wss',
+    host: 'broker.hivemq.com',
+    port: 8884,
+    path: '/mqtt',
+    name: 'HiveMQ'
+};
 
 var WORDS = ['moon','star','sun','fox','wolf','cat','bird','fire','ice','leaf','tree','rock','wave','snow','rain','wind','gold','blue','red','cyan','mint','kite','bell','lion','tiger','bear','fish','rose','lily','fern','pond','lake','river','peak','dune','sand','stone','flame','ember','cloud','storm'];
 
@@ -1256,10 +1263,13 @@ function doRestore() {
     restoreId = id;
     setRestoreStatus('⏳ Подключаюсь к серверу...', '#88aacc');
     if (restoreClient) { try { restoreClient.end(true); } catch(e){} }
-    restoreClient = mqtt.connect(BROKER.url, {
+    
+    // ИЗМЕНЕНИЕ: используем BROKER вместо BROKER.url
+    restoreClient = mqtt.connect(BROKER, {
         clientId: 'restore_' + Math.random().toString(36).slice(2, 12),
         clean: true, connectTimeout: 7000, reconnectPeriod: 0
     });
+    
     restoreClient.on('connect', function() {
         setRestoreStatus('💾 Читаю резервную копию...', '#ffaa44');
         restoreClient.subscribe('superpulya-profile-' + id, {qos: 1}, function(err) {
@@ -1395,7 +1405,8 @@ function showMainMenu() {
     pendingMessages = [];
 
     if (!window._restoreMqtt) {
-        window._restoreMqtt = mqtt.connect(BROKER.url, {
+        // ИЗМЕНЕНИЕ: используем BROKER вместо BROKER.url
+        window._restoreMqtt = mqtt.connect(BROKER, {
             clientId: 'restore_owner_' + myId + '_' + Math.random().toString(36).slice(2, 8),
             clean: true, connectTimeout: 7000, reconnectPeriod: 5000
         });
@@ -1601,7 +1612,8 @@ function connectBroker() {
     setStatus('⏳ Подключаюсь к ' + BROKER.name + '...', 'waiting');
 
     try {
-        mqttClient = mqtt.connect(BROKER.url, {
+        // ИЗМЕНЕНИЕ: используем BROKER вместо BROKER.url
+        mqttClient = mqtt.connect(BROKER, {
             clientId: MQTT_CLIENT_ID,
             clean: false,
             reconnectPeriod: 2000,
