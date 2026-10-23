@@ -613,7 +613,6 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
-<!-- ИЗМЕНЕНИЕ: откат версии MQTT до стабильной 4.3.7 и убрано crossorigin -->
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
 <script>
 'use strict';
@@ -630,9 +629,9 @@ window.onerror = function(msg, url, line) {
     return false;
 };
 
-// ИЗМЕНЕНИЕ: вернули строковый адрес
-var BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
-var BROKER_NAME = 'HiveMQ';
+// ИЗМЕНЕНИЕ: Переключили на EMQX
+var BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
+var BROKER_NAME = 'EMQX';
 
 var WORDS = ['moon','star','sun','fox','wolf','cat','bird','fire','ice','leaf','tree','rock','wave','snow','rain','wind','gold','blue','red','cyan','mint','kite','bell','lion','tiger','bear','fish','rose','lily','fern','pond','lake','river','peak','dune','sand','stone','flame','ember','cloud','storm'];
 
