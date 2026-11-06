@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Пуля для всех</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+body {
+    background: #0a0f1e;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 10px;
+    font-family: 'Segoe UI', Roboto, monospace;
+    touch-action: manipulation;
+}
+#game {
+    max-width: 800px; width: 100%;
+    background: #1a1f2e; border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0,0,0,.7);
+    overflow: hidden; padding: 20px; color: #f0f3f8;
+}
+#header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 2px solid #ffaa44; padding-bottom: 12px;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+}
+#title { font-size: 20px; font-weight: bold; color: #ffaa44; }
+#header-buttons { display: flex; gap: 6px; }
+.hdr-btn {
+    background: #2a2f40; border: 1px solid #ffaa44;
+    border-radius: 20px; padding: 5px 12px;
+    color: #ffecb3; font-size: 12px; cursor: pointer;
+    font-family: inherit; font-weight: 600;
+}
+.hdr-btn:active { background: #3a4a5a; }
+#act-badge {
+    font-size: 12px; background: #2a2f40; padding: 4px 12px;
+    border-radius: 40px; color: #ffecb3; border: 1px solid #ffaa44;
+}
+#progress-bar {
+    width: 100%; height: 6px; background: #2a2f40;
+    border-radius: 4px; margin: 8px 0 16px;
+}
+#progress-fill {
+    height: 100%; background: linear-gradient(90deg, #ffaa44, #ff77aa);
+    border-radius: 4px; width: 0%; transition: width .3s ease;
+}
+#text-content {
+    font-size: 18px; line-height: 1.5; min-height: 140px;
+    background: rgba(0,0,0,.3); padding: 18px 20px;
+    border-radius: 16px; border-left: 4px solid #ffaa44;
+    margin-bottom: 16px; white-space: pre-wrap; word-break: break-word;
+}
+#choices-panel { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.choice-btn {
+    background: linear-gradient(135deg, #1e2a3a, #0f1722);
+    border: 2px solid #ffaa44; border-radius: 60px;
+    padding: 12px 18px; font-size: 15px; font-weight: 600;
+    color: #ffefcf; cursor: pointer; transition: .2s;
+    display: flex; align-items: center; gap: 12px;
+    text-align: left; touch-action: manipulation;
+}
+.choice-btn:active { background: #2f4b5c; transform: scale(.98); }
+.choice-prefix {
+    background: #ffaa44; color: #1a1e2a; border-radius: 40px;
+    width: 32px; height: 32px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold;
+}
+.choice-text { flex: 1; }
+#next-btn {
+    display: none; background: #2a2f40; border: 2px solid #ffaa44;
+    border-radius: 40px; padding: 12px 20px; color: #ffecb3;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+    width: 100%; margin-bottom: 14px;
+}
+#next-btn:active { background: #3a4a5a; }
+#end-panel { display: none; text-align: center; padding: 18px; }
+#end-panel h2 { color: #ffaa44; margin-bottom: 12px; font-size: 20px; }
+#end-panel p { margin-bottom: 12px; line-height: 1.4; }
+#end-panel button {
+    background: linear-gradient(135deg, #ffaa44, #ff8844);
+    border: none; border-radius: 40px; padding: 14px 26px;
+    color: #1a1e2a; font-size: 16px; font-weight: bold;
+    cursor: pointer; margin-top: 8px;
+}
+#end-panel button:active { opacity: .85; }
+#load-panel { display: none; text-align: center; padding: 20px; }
+#load-panel h2 { color: #ffaa44; margin-bottom: 10px; font-size: 19px; }
+#load-panel p { margin-bottom: 14px; font-size: 14px; color: #bbccdd; }
+#load-panel button {
+    background: linear-gradient(135deg, #ffaa44, #ff8844);
+    border: none; border-radius: 40px; padding: 12px 22px;
+    color: #1a1e2a; font-size: 15px; font-weight: bold;
+    cursor: pointer; margin: 4px;
+}
+#load-panel button#new-game {
+    background: #2a2f40; color: #ffecb3; border: 1px solid #ffaa44;
+}
+#stats {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    padding-top: 12px; border-top: 1px solid #2a2f40;
+    font-size: 13px; color: #bbccdd; justify-content: center;
+}
+.stat-item { display: flex; align-items: center; gap: 6px; }
+.stat-value { font-weight: bold; color: #ffaa44; min-width: 26px; }
+#toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #ffaa44; color: #1a1e2a; padding: 10px 20px;
+    border-radius: 30px; font-weight: bold; font-size: 14px;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+    z-index: 100; box-shadow: 0 5px 20px rgba(0,0,0,.4);
+}
+#toast.show { opacity: 1; }
+@media (max-width: 480px) {
+    #game { padding: 14px; }
+    #text-content { font-size: 16px; padding: 14px; }
+    .choice-btn { padding: 10px 14px; font-size: 14px; }
+    .choice-prefix { width: 28px; height: 28px; font-size: 16px; }
+    #title { font-size: 17px; }
+    .hdr-btn { font-size: 11px; padding: 4px 10px; }
+}
+</style>
+</head>
+<body>
+<div id="game">
+    <div id="header">
+        <div id="title">🚀 Пуля: Полная сага</div>
+        <div id="header-buttons">
+            <button class="hdr-btn" id="save-btn">💾 Сохранить</button>
+            <button class="hdr-btn" id="reset-btn">🔄 Заново</button>
+        </div>
+        <div id="act-badge">Акт <span id="act-num">1</span> / <span id="act-total">?</span></div>
+    </div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <div id="text-content">Загрузка...</div>
+    <div id="choices-panel"></div>
+    <button id="next-btn">Далее ▶</button>
+    <div id="load-panel">
+        <h2>Найдено сохранение</h2>
+        <p id="load-info">Продолжить с места, где вы остановились?</p>
+        <button id="continue-save">Продолжить ▶</button>
+        <button id="new-game">Начать заново</button>
+    </div>
+    <div id="end-panel">
+        <h2 id="end-title">Конец акта</h2>
+        <p id="end-text"></p>
+        <button id="continue-btn">Продолжить ▶</button>
+    </div>
+    <div id="stats">
+        <div class="stat-item">✨ Вера: <span class="stat-value" id="stat-faith">50</span></div>
+        <div class="stat-item">🎨 Фантазия: <span class="stat-value" id="stat-fantasy">50</span></div>
+        <div class="stat-item">⚔️ Решимость: <span class="stat-value" id="stat-resolve">50</span></div>
+    </div>
+</div>
+<div id="toast"></div>
+
+<script>
+window.GAME_FLAGS = window.GAME_FLAGS || {};
+window.ACTS = window.ACTS || [];
+</script>
+
+<!-- АКТЫ: добавляй новые строки сюда -->
+<script src="act01.js"></script>
+<script src="act02.js"></script>
+<script src="act03.js"></script>
+<script src="act04.js"></script>
+<script src="act05.js"></script>
+<script src="act06.js"></script>
+<script src="act07.js"></script>
+<script src="act08.js"></script>
+<script src="act09.js"></script>
+<script src="act10.js"></script>
+<script src="act11.js"></script>
+<script src="act12.js"></script>
+<script src="act13.js"></script>
+<script src="act14.js"></script>
+<script src="act15.js"></script>
+<script src="act16.js"></script>
+<script src="act17.js"></script>
+<script src="act18.js"></script>
+<script src="act19.js"></script>
+<script src="act20.js"></script>
+<script src="act21.js"></script>
+<script src="act22.js"></script>
+<script src="act23.js"></script>
+<script src="act24.js"></script>
+<script src="act25.js"></script>
+<script src="act26.js"></script>
+<script src="act27.js"></script>
+<script src="act28.js"></script>
+<script>
+const SAVE_KEY = 'pulya_saga_save_v1';
+const state = { faith: 50, fantasy: 50, resolve: 50 };
+let currentActIndex = 0;
+let currentSceneId = null;
+let currentAct = null;
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function updateStatsUI() {
+    document.getElementById('stat-faith').textContent = state.faith;
+    document.getElementById('stat-fantasy').textContent = state.fantasy;
+    document.getElementById('stat-resolve').textContent = state.resolve;
+}
+
+function applyEffects(effects) {
+    if (!effects) return;
+    effects.forEach(([stat, delta]) => {
+        if (state[stat] !== undefined) {
+            state[stat] = Math.max(0, Math.min(100, state[stat] + delta));
+        }
+    });
+    updateStatsUI();
+}
+
+function showScene(sceneId) {
+    if (!currentAct) return;
+    const scene = currentAct.scenes[sceneId];
+    if (!scene) {
+        console.error('Сцена не найдена:', sceneId);
+        return;
+    }
+    currentSceneId = sceneId;
+
+    const total = Object.keys(currentAct.scenes).length;
+    const idx = Object.keys(currentAct.scenes).indexOf(sceneId);
+    document.getElementById('progress-fill').style.width =
+        Math.max(0, Math.min(100, ((idx + 1) / total) * 100)) + '%';
+
+    document.getElementById('text-content').textContent = scene.text;
+    document.getElementById('act-num').textContent = currentAct.id;
+    document.getElementById('act-total').textContent = window.ACTS.length;
+
+    const panel = document.getElementById('choices-panel');
+    panel.innerHTML = '';
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('end-panel').style.display = 'none';
+    document.getElementById('load-panel').style.display = 'none';
+
+    if (scene.final) {
+        showEndPanel(scene.endTitle || 'Конец акта', scene.endText || '');
+        return;
+    }
+
+    if (scene.choices && scene.choices.length > 0) {
+        scene.choices.forEach((ch, i) => {
+            const btn = document.createElement('div');
+            btn.className = 'choice-btn';
+            btn.innerHTML =
+                `<span class="choice-prefix">${String.fromCharCode(65 + i)}</span>` +
+                `<span class="choice-text">${ch.text}</span>`;
+            btn.addEventListener('click', () => onChoice(ch));
+            panel.appendChild(btn);
+        });
+        return;
+    }
+
+    const nextBtn = document.getElementById('next-btn');
+    nextBtn.style.display = 'block';
+    nextBtn.onclick = () => {
+        let next = scene.next;
+        if (typeof next === 'function') next = next(state);
+        updateStatsUI();
+        goNext(next);
+    };
+}
+
+function onChoice(choice) {
+    applyEffects(choice.effects);
+
+    let next = choice.next;
+    if (typeof next === 'function') next = next(state);
+    updateStatsUI();
+
+    // Фиксируем следующую сцену, чтобы сохранение захватило состояние после выбора
+    if (next) currentSceneId = next;
+
+    if (choice.result) {
+        document.getElementById('text-content').textContent = choice.result;
+        document.getElementById('choices-panel').innerHTML = '';
+        document.getElementById('next-btn').style.display = 'block';
+        document.getElementById('next-btn').onclick = () => goNext(next);
+    } else {
+        goNext(next);
+    }
+}
+
+function goNext(next) {
+    if (!next) {
+        showEndPanel('Конец акта', 'Продолжение следует...');
+        return;
+    }
+    showScene(next);
+}
+
+function showEndPanel(title, text) {
+    document.getElementById('choices-panel').innerHTML = '';
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('end-panel').style.display = 'block';
+    document.getElementById('end-title').textContent = title;
+    document.getElementById('end-text').textContent = text;
+
+    const contBtn = document.getElementById('continue-btn');
+    const hasNext = currentActIndex + 1 < window.ACTS.length;
+    contBtn.style.display = hasNext ? 'inline-block' : 'none';
+    if (!hasNext) {
+        document.getElementById('end-text').textContent =
+            text + ' (Это последний доступный акт. Добавь следующий файл и перезагрузи страницу.)';
+    }
+    contBtn.onclick = () => {
+        if (hasNext) {
+            currentActIndex++;
+            loadAct(currentActIndex);
+        }
+    };
+}
+
+function loadAct(index) {
+    if (index < 0 || index >= window.ACTS.length) return;
+    currentActIndex = index;
+    currentAct = window.ACTS[index];
+
+    document.getElementById('act-num').textContent = currentAct.id;
+    document.getElementById('act-total').textContent = window.ACTS.length;
+    document.getElementById('progress-fill').style.width = '0%';
+
+    const firstSceneId = Object.keys(currentAct.scenes)[0];
+    currentSceneId = firstSceneId;
+    showScene(firstSceneId);
+}
+
+function saveGame() {
+    if (!currentAct) return;
+    const save = {
+        version: 1,
+        actIndex: currentActIndex,
+        sceneId: currentSceneId,
+        state: { ...state },
+        flags: { ...window.GAME_FLAGS },
+        timestamp: Date.now()
+    };
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+        showToast('💾 Прогресс сохранён');
+    } catch (e) {
+        showToast('Ошибка: ' + e.message);
+    }
+}
+
+function readSave() {
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return null;
+        const save = JSON.parse(raw);
+        if (save.version !== 1) return null;
+        if (typeof save.actIndex !== 'number') return null;
+        if (typeof save.sceneId !== 'string') return null;
+        return save;
+    } catch (e) {
+        return null;
+    }
+}
+
+function restoreSave(save) {
+    if (save.state) {
+        state.faith = save.state.faith ?? 50;
+        state.fantasy = save.state.fantasy ?? 50;
+        state.resolve = save.state.resolve ?? 50;
+    }
+    if (save.flags) Object.assign(window.GAME_FLAGS, save.flags);
+
+    let actIdx = save.actIndex;
+    if (actIdx < 0 || actIdx >= window.ACTS.length) actIdx = 0;
+    currentActIndex = actIdx;
+    currentAct = window.ACTS[currentActIndex];
+
+    updateStatsUI();
+    document.getElementById('act-num').textContent = currentAct.id;
+    document.getElementById('act-total').textContent = window.ACTS.length;
+
+    let sceneId = save.sceneId;
+    if (!currentAct.scenes[sceneId]) {
+        sceneId = Object.keys(currentAct.scenes)[0];
+    }
+    currentSceneId = sceneId;
+    showToast('▶ Продолжаем с сохранения');
+    showScene(sceneId);
+}
+
+function resetSave() {
+    localStorage.removeItem(SAVE_KEY);
+    showToast('Сохранение удалено');
+    setTimeout(() => location.reload(), 400);
+}
+
+function startGame() {
+    if (window.ACTS.length === 0) {
+        document.getElementById('text-content').textContent =
+            'Нет загруженных актов. Проверь, что файлы act01.js и т.д. подключены.';
+        return;
+    }
+    const save = readSave();
+    if (save) {
+        const act = window.ACTS[save.actIndex];
+        document.getElementById('load-panel').style.display = 'block';
+        document.getElementById('text-content').textContent =
+            'Обнаружено сохранение от ' +
+            new Date(save.timestamp).toLocaleString('ru-RU');
+        document.getElementById('load-info').textContent =
+            'Акт ' + (act ? act.id : '?') + ' · Вера ' + save.state.faith +
+            ' · Фантазия ' + save.state.fantasy + ' · Решимость ' + save.state.resolve;
+        document.getElementById('choices-panel').innerHTML = '';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('act-num').textContent = act ? act.id : '?';
+        document.getElementById('act-total').textContent = window.ACTS.length;
+
+        document.getElementById('continue-save').onclick = () => restoreSave(save);
+        document.getElementById('new-game').onclick = () => resetSave();
+    } else {
+        loadAct(0);
+    }
+}
+
+document.getElementById('save-btn').addEventListener('click', saveGame);
+document.getElementById('reset-btn').addEventListener('click', () => {
+    if (confirm('Удалить сохранение и начать заново?')) resetSave();
+});
+
+window.addEventListener('DOMContentLoaded', startGame);
+</script>
+</body>
+</html>
