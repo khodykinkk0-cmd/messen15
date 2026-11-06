@@ -256,6 +256,69 @@ button.full { width: 100%; margin-top: 10px; }
     padding: 8px 10px; border-radius: 6px;
     margin-bottom: 10px; font-size: 11px; color: #c0e0ff; line-height: 1.5;
 }
+
+/* ===== ИГРА «ПУЛЯ» ===== */
+#game-btn {
+    background: linear-gradient(135deg, #ffaa44, #ff7722);
+    color: #0a0f1e; border: none; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px; font-weight: bold;
+    cursor: pointer; font-family: inherit; flex-shrink: 0;
+    min-height: 36px; box-shadow: 0 2px 8px rgba(255,170,68,0.3);
+}
+#game-btn:active { transform: scale(0.96); }
+
+#game-modal {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: #0a0f1e; z-index: 1000; flex-direction: column;
+}
+#game-modal.visible { display: flex; }
+#game-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #0a0f1e;
+    border-bottom: 1px solid #2a3a4a; flex-shrink: 0;
+    padding-top: max(env(safe-area-inset-top), 10px);
+}
+#game-header .game-title { color: #ffaa44; font-weight: bold; font-size: 15px; }
+#game-header .game-hdr-btns { display: flex; gap: 6px; }
+#game-header button {
+    background: #2a3a4a; color: #ff8888; border: none;
+    border-radius: 8px; padding: 8px 12px; font-size: 14px;
+    font-weight: bold; cursor: pointer; font-family: inherit;
+    min-height: 40px; min-width: 40px; flex: 0 0 auto;
+}
+#game-header button:active { transform: scale(0.96); }
+#game-header button.settings { color: #88aacc; }
+#game-frame { flex: 1; width: 100%; border: none; background: #0a0f1e; }
+#game-setup {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 20px; color: #c0e0ff; text-align: center; line-height: 1.6;
+    overflow-y: auto;
+}
+#game-setup .setup-card {
+    max-width: 480px; width: 100%;
+    background: #0f1722; border: 1px solid #2a3a4a;
+    border-radius: 16px; padding: 24px;
+}
+#game-setup h2 { color: #ffaa44; font-size: 20px; margin-bottom: 16px; }
+#game-setup p { font-size: 14px; margin-bottom: 12px; color: #c0e0ff; }
+#game-setup .hint-box {
+    background: #1a2a3a; border-left: 3px solid #ffaa44;
+    padding: 12px; border-radius: 8px; margin: 16px 0;
+    font-size: 13px; text-align: left; line-height: 1.6;
+}
+#game-setup code {
+    background: #2a3a4a; padding: 2px 8px; border-radius: 6px;
+    color: #ffdd88; font-size: 12px;
+}
+#game-url-input {
+    width: 100%; background: #0f1722; color: #e0e6f0;
+    border: 2px solid #2a3a4a; border-radius: 10px;
+    padding: 12px 14px; font-family: monospace; font-size: 14px;
+    text-align: left; outline: none;
+}
+#game-url-input:focus { border-color: #ffaa44; }
+#game-setup .btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+#game-setup button { min-height: 48px; }
 </style>
 </head>
 <body>
@@ -265,6 +328,7 @@ button.full { width: 100%; margin-top: 10px; }
 <div id="app">
     <h1>
         <span id="app-title" onclick="openAccountModal()">🚀 Пуля</span>
+        <button type="button" id="game-btn" onclick="openGame()">🎮 Играть</button>
         <button type="button" id="install-btn" onclick="doInstall()">📥 Установить</button>
     </h1>
     <div id="status" onclick="openSettingsModal()" title="Настройки">Выберите действие</div>
@@ -292,6 +356,7 @@ button.full { width: 100%; margin-top: 10px; }
                 <div id="rooms-list"></div>
                 <button type="button" class="big" onclick="showCreateRoom()" style="margin-top:12px;">🆕 Создать комнату</button>
                 <button type="button" class="big secondary" onclick="showJoinRoom()" style="margin-top:8px;">🔗 Присоединиться</button>
+                <button type="button" class="big" onclick="openGame()" style="margin-top:8px;background:linear-gradient(135deg,#44ff88,#22aa55);color:#0a0f1e;">🎮 Играть в Пулю</button>
             </div>
         </div>
 
@@ -486,6 +551,11 @@ button.full { width: 100%; margin-top: 10px; }
         <h3>⚙️ Настройки</h3>
         <div class="device-note">🖥️ Все режимы и настройки ниже применяются <b>только к этому устройству</b> и не синхронизируются с другими.</div>
         
+        <button type="button" class="sound-choice" onclick="closeSettingsModal(); openGame();">
+            <span class="icon-play">🎮</span>
+            <span class="title">Играть в Пулю <span class="sub">Космическая сага «Пуля»</span></span>
+        </button>
+
         <button type="button" class="sound-choice" id="incognito-btn" onclick="toggleIncognito()">
             <span class="icon-play">🥷</span>
             <span class="title">Режим инкогнито <span class="sub" id="incognito-status">Выключен</span></span>
@@ -611,6 +681,39 @@ button.full { width: 100%; margin-top: 10px; }
         </div>
         <button type="button" class="close-btn" onclick="closeInstallModal()">Понятно, закрыть</button>
     </div>
+</div>
+
+<!-- ================== GAME MODAL ================== -->
+<div id="game-modal">
+    <div id="game-header">
+        <span class="game-title">🎮 Пуля: Полная сага</span>
+        <div class="game-hdr-btns">
+            <button type="button" class="settings" onclick="resetGameUrl()" title="Изменить адрес">⚙️</button>
+            <button type="button" onclick="closeGame()" title="Закрыть">✕</button>
+        </div>
+    </div>
+    <div id="game-setup" style="display:none;">
+        <div class="setup-card">
+            <h2>🎮 Игра «Пуля»</h2>
+            <p>Чтобы открыть игру, укажите адрес, где она размещена.</p>
+            <div class="hint-box">
+                💡 <b>Как это сделать:</b><br>
+                1. Загрузите игру на GitHub Pages (или другой хостинг)<br>
+                2. Скопируйте ссылку вида<br>
+                <code>https://ваш-ник.github.io/pulya-game/</code><br>
+                3. Вставьте её в поле ниже и нажмите «Сохранить»
+            </div>
+            <label style="display:block;font-size:13px;color:#889;margin-bottom:6px;text-align:left;">Адрес игры:</label>
+            <input id="game-url-input" type="text"
+                placeholder="https://ваш-ник.github.io/pulya-game/"
+                autocomplete="off" autocapitalize="off"
+                autocorrect="off" spellcheck="false">
+            <div class="btn-row">
+                <button type="button" onclick="saveGameUrl()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+    <iframe id="game-frame" src="about:blank" style="display:none;" allow="fullscreen"></iframe>
 </div>
 
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
@@ -1259,7 +1362,6 @@ function doRestore() {
     setRestoreStatus('⏳ Подключаюсь к серверу...', '#88aacc');
     if (restoreClient) { try { restoreClient.end(true); } catch(e){} }
     
-    // ИЗМЕНЕНИЕ: используем BROKER_URL
     restoreClient = mqtt.connect(BROKER_URL, {
         clientId: 'restore_' + Math.random().toString(36).slice(2, 12),
         clean: true, connectTimeout: 7000, reconnectPeriod: 0
@@ -1400,7 +1502,6 @@ function showMainMenu() {
     pendingMessages = [];
 
     if (!window._restoreMqtt) {
-        // ИЗМЕНЕНИЕ: используем BROKER_URL
         window._restoreMqtt = mqtt.connect(BROKER_URL, {
             clientId: 'restore_owner_' + myId + '_' + Math.random().toString(36).slice(2, 8),
             clean: true, connectTimeout: 7000, reconnectPeriod: 5000
@@ -1607,7 +1708,6 @@ function connectBroker() {
     setStatus('⏳ Подключаюсь к ' + BROKER_NAME + '...', 'waiting');
 
     try {
-        // ИЗМЕНЕНИЕ: используем BROKER_URL
         mqttClient = mqtt.connect(BROKER_URL, {
             clientId: MQTT_CLIENT_ID,
             clean: false,
@@ -2060,6 +2160,68 @@ function doInstall() {
     showInstallTab(os);
 }
 function closeInstallModal() { $('install-modal').classList.remove('visible'); }
+
+// ============================================================
+//  ИГРА «ПУЛЯ»
+// ============================================================
+var GAME_URL_KEY = 'pulya-game-url';
+
+function openGame() {
+    var url = localStorage.getItem(GAME_URL_KEY);
+    var frame = document.getElementById('game-frame');
+    var setup = document.getElementById('game-setup');
+    if (url) {
+        frame.src = url;
+        frame.style.display = 'block';
+        setup.style.display = 'none';
+    } else {
+        frame.style.display = 'none';
+        setup.style.display = 'flex';
+        var input = document.getElementById('game-url-input');
+        if (input) {
+            input.value = '';
+            setTimeout(function() { input.focus(); }, 150);
+        }
+    }
+    document.getElementById('game-modal').classList.add('visible');
+}
+
+function closeGame() {
+    document.getElementById('game-modal').classList.remove('visible');
+    setTimeout(function() {
+        document.getElementById('game-frame').src = 'about:blank';
+    }, 100);
+}
+
+function saveGameUrl() {
+    var input = document.getElementById('game-url-input');
+    var url = (input.value || '').trim();
+    if (!url) { showError('Введите адрес игры'); return; }
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url) &&
+        !/^[./]/.test(url) &&
+        !/\.(html?|php)$/i.test(url) &&
+        !url.endsWith('/')) {
+        url = 'https://' + url;
+    }
+    try { localStorage.setItem(GAME_URL_KEY, url); } catch(e) {}
+    showError('✅ Адрес игры сохранён');
+    openGame();
+}
+
+function resetGameUrl() {
+    if (!confirm('Изменить адрес игры?')) return;
+    try { localStorage.removeItem(GAME_URL_KEY); } catch(e) {}
+    var frame = document.getElementById('game-frame');
+    var setup = document.getElementById('game-setup');
+    frame.src = 'about:blank';
+    frame.style.display = 'none';
+    setup.style.display = 'flex';
+    var input = document.getElementById('game-url-input');
+    if (input) {
+        input.value = '';
+        setTimeout(function() { input.focus(); }, 150);
+    }
+}
 
 // ============================================================
 //  ИНИЦИАЛИЗАЦИЯ
