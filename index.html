@@ -2143,8 +2143,38 @@ function showInstallTab(os) {
     var panels = document.querySelectorAll('.install-panel');
     for (var i = 0; i < panels.length; i++) panels[i].classList.toggle('active', panels[i].id === 'install-' + os);
 }
+// ============================================================
+//  УСТАНОВКА APK
+// ============================================================
+// URL APK: ссылка на GitHub Releases ИЛИ локальный путь (pulya.apk)
+// Если хотите временно отключить APK-установку — поставьте null
+var APK_URL = 'https://github.com/khodykinkk0-cmd/messen15/releases/download/v1.0/pulya.apk';
+
 function doInstall() {
-    if (deferredPrompt) {
+    var os = detectOS();
+
+    // Если приложение уже открыто как установленное (PWA/APK) — сообщаем
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true;
+    if (isStandalone) {
+        showError('Приложение уже установлено');
+        return;
+    }
+
+    // Android — скачиваем APK
+    if (os === 'android' && APK_URL) {
+        var ok = confirm(
+            'Скачать установочный файл «Пуля» (APK)?\n\n' +
+            'После загрузки откройте файл в уведомлениях или в папке «Загрузки».\n' +
+            'Может потребоваться разрешить установку из неизвестных источников.'
+        );
+        if (!ok) return;
+        triggerApkDownload();
+        return;
+    }
+
+    // Android без APK_URL — пробуем PWA-установку
+    if (os === 'android' && deferredPrompt) {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then(function(choice) {
             if (choice.outcome === 'accepted') showError('✅ Установлено!');
@@ -2152,12 +2182,30 @@ function doInstall() {
         });
         return;
     }
-    var os = detectOS();
-    if (os === 'iphone') { $('ios-install').classList.add('visible'); return; }
-    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    if (isStandalone) { showError('Приложение уже установлено'); return; }
+
+    // iPhone — установка PWA через Safari
+    if (os === 'iphone') {
+        $('ios-install').classList.add('visible');
+        return;
+    }
+
+    // Windows и всё остальное — инструкция по установке PWA
     $('install-modal').classList.add('visible');
     showInstallTab(os);
+}
+
+function triggerApkDownload() {
+    showError('📥 Скачивание APK... Проверьте уведомления');
+    var a = document.createElement('a');
+    a.href = APK_URL;
+    a.download = 'pulya.apk';
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+        document.body.removeChild(a);
+    }, 1000);
 }
 function closeInstallModal() { $('install-modal').classList.remove('visible'); }
 
