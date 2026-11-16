@@ -7,7 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Пуля">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <title>Пуля — мессенджер</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -61,7 +62,7 @@ button { background: linear-gradient(135deg, #ffaa44, #ff7722); color: #0a0f1e;
 button:active { transform: scale(0.97); }
 button:disabled { background: #2a3a4a; color: #556; }
 button.secondary { background: linear-gradient(135deg, #4a5a6a, #2a3a4a); color: #c0e0ff; }
-button.big { padding: 16px; font-size: 16px; min-height: 62px; }
+button.big { padding: 16px; font-size: 16px; min-height: 62px; width: 100%; }
 button.full { width: 100%; margin-top: 10px; }
 .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .icon { font-size: 20px; margin-right: 6px; }
@@ -72,10 +73,10 @@ button.full { width: 100%; margin-top: 10px; }
     overflow: hidden; min-height: 0; }
 #chat-header { display: flex; justify-content: space-between; align-items: center;
     padding: 8px 10px; background: #0a0f1e; border-bottom: 1px solid #2a3a4a;
-    font-size: 12px; color: #88aacc; flex-shrink: 0; gap: 8px; }
+    font-size: 12px; color: #88aacc; flex-shrink: 0; gap: 8px; flex-wrap: wrap; }
 #chat-header .room-code { font-family: monospace; font-weight: bold;
     color: #ffdd88; user-select: all; white-space: nowrap; }
-#chat-header .header-right { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+#chat-header .header-right { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .invite-btn { background: linear-gradient(135deg, #ffaa44, #ff7722);
     color: #0a0f1e; border: none; border-radius: 8px; padding: 6px 12px;
     font-size: 12px; font-weight: bold; cursor: pointer; font-family: inherit;
@@ -284,6 +285,11 @@ button.full { width: 100%; margin-top: 10px; }
                 <div id="rooms-list"></div>
                 <button type="button" class="big" onclick="showCreateRoom()" style="margin-top:12px;">🆕 Создать комнату</button>
                 <button type="button" class="big secondary" onclick="showJoinRoom()" style="margin-top:8px;">🔗 Присоединиться</button>
+            </div>
+            <div class="step">
+                <h2>Ещё</h2>
+                <button type="button" class="big secondary" onclick="openBrowser()">🌐 Открыть ссылку</button>
+                <button type="button" class="big secondary" id="install-main-btn" onclick="doInstall()" style="margin-top:8px;">📥 Установить приложение</button>
             </div>
         </div>
 
@@ -609,7 +615,6 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
-<!-- ============ ABLY SDK ============ -->
 <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 <script>
 'use strict';
@@ -617,7 +622,6 @@ button.full { width: 100%; margin-top: 10px; }
 // ============================================================
 //  КОНФИГУРАЦИЯ
 // ============================================================
-// ВАЖНО: замените ключ на свой с ably.com (прототип: root-ключ, продакшн: token auth).
 var ABLY_KEY = 'ЗАМЕНИТЕ_НА_ВАШ_ABLY_API_KEY';
 
 function showError(msg) {
@@ -638,10 +642,10 @@ var WORDS = ['moon','star','sun','fox','wolf','cat','bird','fire','ice','leaf','
 //  ABLY STATE
 // ============================================================
 var ably = null;
-var roomChannel = null;       // pulya-<room>
-var dmChannel = null;         // pulya-dm-<myId>
-var restoreReqChannel = null; // pulya-restore-request-<myId>
-var restoreCh = null;         // временный канал для чтения чужого профиля
+var roomChannel = null;
+var dmChannel = null;
+var restoreReqChannel = null;
+var restoreCh = null;
 var ablyReady = false;
 var ownChannelsSubscribed = false;
 
@@ -664,10 +668,14 @@ window.addEventListener('beforeinstallprompt', function(e) {
     deferredPrompt = e;
     var btn = document.getElementById('install-btn');
     if (btn) btn.textContent = '📥 Установить сейчас';
+    var mainBtn = document.getElementById('install-main-btn');
+    if (mainBtn) mainBtn.textContent = '📥 Установить сейчас';
 });
 window.addEventListener('appinstalled', function() {
     var btn = document.getElementById('install-btn');
     if (btn) btn.style.display = 'none';
+    var mainBtn = document.getElementById('install-main-btn');
+    if (mainBtn) mainBtn.style.display = 'none';
     deferredPrompt = null;
 });
 
@@ -718,7 +726,7 @@ function plural(n, one, few, many) {
 }
 
 // ============================================================
-//  ИНКОГНИТО (обычный + инкогнито 2)
+//  ИНКОГНИТО
 // ============================================================
 var incognito = localStorage.getItem('chat-incognito') === 'on';
 var incognito2 = false;
@@ -727,7 +735,6 @@ try { incognito2 = localStorage.getItem('chat-incognito2') === 'on'; } catch(e){
 function dataStore() {
     return incognito2 ? sessionStorage : localStorage;
 }
-
 function getDisplayName() { return incognito ? 'Аноним' : myName; }
 function getDisplayAvatar() { return incognito ? '🥷' : myAvatar; }
 
@@ -744,12 +751,9 @@ function toggleIncognito2() {
     if (!incognito2) {
         incognito2 = true;
         try { localStorage.setItem('chat-incognito2', 'on'); } catch(e) {}
-
         historyCache = [];
         lastRenderedDay = null;
         if ($('messages')) $('messages').innerHTML = '';
-
-        // Убираем облачную копию, пока режим включён.
         if (ablyReady) {
             try {
                 ably.channels.get('pulya-profile-' + myId)
@@ -760,7 +764,6 @@ function toggleIncognito2() {
     } else {
         incognito2 = false;
         try { localStorage.removeItem('chat-incognito2'); } catch(e) {}
-
         loadProfile();
         if (HISTORY_KEY) {
             historyCache = loadHistory();
@@ -905,7 +908,6 @@ function sendDm() {
     var inp = $('dm-input');
     var text = (inp.value || '').trim();
     if (!text) return;
-
     var ts = Date.now();
     var mid = genMsgId();
     var msg = {
@@ -917,13 +919,11 @@ function sendDm() {
     var arr = loadDm(dmPeerId);
     arr.push({ text: text, t: ts, isMe: true });
     saveDm(dmPeerId, arr);
-
     var m = getDmPeersMap();
     m[dmPeerId] = { name: dmPeerName, avatar: dmPeerAvatar };
     saveDmPeersMap(m);
     inp.value = ''; if (inp.blur) inp.blur();
     renderDmMessages();
-
     if (!ablyReady) { showError('Нет соединения. Сообщение не отправлено.'); return; }
     try {
         ably.channels.get('pulya-dm-' + dmPeerId).publish('dm', msg).catch(function(err){
@@ -947,10 +947,8 @@ function handleDmIncoming(d) {
     var arr = loadDm(d.from);
     arr.push({ text: d.text, t: d._t || Date.now(), isMe: false });
     saveDm(d.from, arr);
-
     playNotify();
     flashTitle((d.fromName || 'Сообщение') + ': ' + d.text);
-
     if (dmPeerId === d.from && $('dm-chat-modal').classList.contains('visible')) {
         renderDmMessages();
     }
@@ -1147,7 +1145,6 @@ function doLogout() {
             }
         });
     } catch(e) {}
-
     if (ably) { try { ably.close(); } catch(e){} ably = null; }
     location.reload();
 }
@@ -1180,22 +1177,16 @@ function openRestoreModal() {
 }
 function closeRestoreModal() {
     document.getElementById('restore-modal').classList.remove('visible');
-    if (restoreCh) {
-        try { restoreCh.detach(); } catch(e){}
-        restoreCh = null;
-    }
+    if (restoreCh) { try { restoreCh.detach(); } catch(e){} restoreCh = null; }
 }
 function doRestore() {
     var id = (document.getElementById('restore-input').value || '').trim();
     if (!id) { setRestoreStatus('Введите ID', '#ff6666'); return; }
     if (id === myId) { setRestoreStatus('Это ваш текущий ID', '#ffaa44'); return; }
     if (!ablyReady) { setRestoreStatus('❌ Нет соединения с Ably', '#ff6666'); return; }
-
     setRestoreStatus('💾 Читаю резервную копию...', '#ffaa44');
-
     if (restoreCh) { try { restoreCh.detach(); } catch(e){} }
     restoreCh = ably.channels.get('pulya-profile-' + id);
-
     var done = false;
     function apply(data) {
         if (done) return;
@@ -1210,25 +1201,19 @@ function doRestore() {
         setRestoreStatus('✅ Профиль восстановлен!', '#44ff88');
         setTimeout(function() { closeRestoreModal(); showMainMenu(); }, 1200);
     }
-
-    // 1. Пробуем историю канала
     restoreCh.history({limit: 1}, function(err, result) {
         if (!err && result && result.items && result.items.length > 0) {
             apply(result.items[0].data);
             if (done) return;
         }
-        // 2. Подписываемся с rewind — на случай, если сообщение свежее
         try {
             var chRew = ably.channels.get('pulya-profile-' + id, { params: { rewind: '1' } });
             chRew.subscribe('profile', function(msg) { apply(msg.data); });
         } catch(e) {}
-
-        // 3. Публикуем запрос — вдруг владелец сейчас онлайн
         try {
             ably.channels.get('pulya-restore-request-' + id)
                 .publish('req', { from: myId });
         } catch(e) {}
-
         setTimeout(function() {
             if (!done) setRestoreStatus('❌ Копия не найдена или устарела. Попросите владельца ID зайти в приложение и повторить.', '#ff6666');
         }, 6000);
@@ -1303,6 +1288,23 @@ function renderMainMenu() {
     }
 }
 
+function updateInstallButtonsVisibility() {
+    var standalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true;
+    var headerBtn = $('install-btn');
+    var mainBtn   = $('install-main-btn');
+    var mm        = $('main-menu');
+    var onMainMenu = mm && mm.style.display !== 'none';
+    if (standalone) {
+        if (headerBtn) headerBtn.style.display = 'none';
+        if (mainBtn)   mainBtn.style.display   = 'none';
+        return;
+    }
+    if (headerBtn) headerBtn.style.display = onMainMenu ? 'none' : '';
+    if (mainBtn)   mainBtn.style.display   = '';
+}
+
 function showMainMenu() {
     $('setup').style.display = 'block';
     $('profile-create').style.display = 'none';
@@ -1316,9 +1318,8 @@ function showMainMenu() {
     leaveRoomAbly();
     peers = {};
     pendingMessages = [];
-
-    // Соединение с Ably устанавливаем при первом показе меню
     connectAbly();
+    updateInstallButtonsVisibility();
 }
 function backToMainMenu() { showMainMenu(); }
 function showCreateRoom() {
@@ -1329,12 +1330,14 @@ function showCreateRoom() {
     var c = genCode();
     roomCode = c;
     $('room-code').textContent = c;
+    updateInstallButtonsVisibility();
 }
 function showJoinRoom() {
     $('profile-create').style.display = 'none';
     $('main-menu').style.display = 'none';
     $('step-join').style.display = 'block';
     $('step-create').style.display = 'none';
+    updateInstallButtonsVisibility();
 }
 function doEnter() { if (roomCode) startRoom(roomCode); }
 function doJoin() {
@@ -1494,13 +1497,13 @@ document.addEventListener('visibilitychange', function() {
 });
 
 // ============================================================
-//  ABLY — ОСНОВНОЕ СОЕДИНЕНИЕ
+//  ABLY — СОЕДИНЕНИЕ
 // ============================================================
 function connectAbly() {
     if (ably) return;
     try {
         ably = new Ably.Realtime({
-            key: bWg79A.hv-Kug:AUky441zfrVg718rYUhb1746FBvm2sN54HpvZaB86t0,
+            key: ABLY_KEY;
             clientId: myId,
             echoMessages: false
         });
@@ -1514,11 +1517,9 @@ function connectAbly() {
         setStatus('🟢 Подключено (Ably)', 'online');
         subscribeOwnChannels();
     });
-
     ably.connection.on('connected', function() {
         ablyReady = true;
         setStatus('🟢 Подключено (Ably)', 'online');
-        // На реконнекте — заново входим в presence
         if (roomChannel && roomCode) {
             roomChannel.presence.enter({
                 name: getDisplayName(),
@@ -1526,7 +1527,6 @@ function connectAbly() {
             }).catch(function(){});
         }
     });
-
     ably.connection.on('connecting', function() {
         setStatus('⏳ Подключаюсь к Ably...', 'waiting');
     });
@@ -1547,19 +1547,14 @@ function connectAbly() {
 function subscribeOwnChannels() {
     if (ownChannelsSubscribed) return;
     ownChannelsSubscribed = true;
-
-    // Глобальный канал личных сообщений
     dmChannel = ably.channels.get('pulya-dm-' + myId);
     dmChannel.subscribe('dm', function(msg) {
         try { handleDmIncoming(msg.data); } catch(e) { console.warn(e); }
     });
-
-    // Запросы на восстановление профиля
     restoreReqChannel = ably.channels.get('pulya-restore-request-' + myId);
     restoreReqChannel.subscribe('req', function() {
         publishProfileToCloud();
     });
-
     publishProfileToCloud();
 }
 
@@ -1578,7 +1573,6 @@ function updateAblyPresence() {
 function enterRoomAbly(code) {
     if (!ably || !ablyReady) return;
     if (roomChannel) { try { roomChannel.detach(); } catch(e){} }
-
     roomChannel = ably.channels.get('pulya-' + normTopic(code));
 
     roomChannel.subscribe('msg', function(msg) {
@@ -1599,21 +1593,17 @@ function enterRoomAbly(code) {
             flashTitle(data.name + ': ' + data.text);
         } catch(e) { console.warn('ably msg', e); }
     });
-
     roomChannel.subscribe('call', function(msg) {
         try { handleCallMessage(msg.data); } catch(e) { console.warn('ably call', e); }
     });
-
     roomChannel.presence.subscribe(function(member) {
         try { handlePresence(member); } catch(e) { console.warn('ably presence', e); }
     });
-
     roomChannel.presence.enter({
         name: getDisplayName(),
         avatar: getDisplayAvatar()
     }).catch(function(err){ console.warn('presence.enter', err); });
 
-    // Забираем текущих участников
     roomChannel.presence.get(function(err, members) {
         if (err) return;
         members.forEach(function(m) {
@@ -1633,7 +1623,6 @@ function enterRoomAbly(code) {
 function handlePresence(member) {
     if (member.clientId === myId) return;
     if (isBlacklisted(member.clientId)) return;
-
     if (member.action === 'enter' || member.action === 'update') {
         var d = member.data || {};
         var isNew = !peers[member.clientId];
@@ -1751,8 +1740,7 @@ function startCall() {
     }).then(function(offer) {
         publishCall({type:'offer', id:myId, name:getDisplayName(), avatar:getDisplayAvatar(), to:targetId, sdp:offer});
     }).catch(function(e) {
-        showError('Ошибка микрофона: ' + e.message);
-        endCall();
+        showError('Ошибка микрофона: ' + e.message); endCall();
     });
 }
 function handleCallMessage(data) {
@@ -1880,10 +1868,8 @@ function startRoom(c){
     if (historyCache.length > 0) renderStoredHistory();
     else addSys('Вы вошли в комнату. Подключение...');
 
-    // Убеждаемся, что Ably подключён, и входим в комнату
     if (!ably) {
         connectAbly();
-        // Ждём connect и входим
         var waitConnect = setInterval(function() {
             if (ablyReady) {
                 clearInterval(waitConnect);
@@ -1914,7 +1900,6 @@ function doSend(){
     var i = $('msg-input');
     var t = (i.value || '').trim();
     if (!t) return;
-
     var ts = Date.now();
     var mid = genMsgId();
     var msg = {
@@ -1924,12 +1909,10 @@ function doSend(){
     seenMsgIds[mid] = Date.now();
     var now = Date.now();
     for (var k in seenMsgIds) { if (now - seenMsgIds[k] > 300000) delete seenMsgIds[k]; }
-
     addMsg(t, null, true, ts);
     addToHistory({kind:'msg', name: getDisplayName(), text: t, isMe: true, t: ts, avatar: getDisplayAvatar(), mid: mid});
     i.value = '';
     if (i.blur) i.blur();
-
     if (!ablyReady || !roomChannel) {
         pendingMessages.push(msg);
         addSys('Нет соединения. Сообщение отправится при подключении.');
@@ -2012,6 +1995,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('profile-create').style.display = 'block';
         renderAvatarPicker('avatar-picker', myAvatar);
     }
+    updateInstallButtonsVisibility();
 });
 
 setTimeout(function(){
@@ -2028,6 +2012,25 @@ document.addEventListener('click', function() { initAudio(); }, { once: true });
 document.addEventListener('touchstart', function() { initAudio(); }, { once: true });
 
 if (!window.isSecureContext) setTimeout(function(){ showError('Нужен HTTPS.'); }, 200);
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+            .then(function(reg) {
+                reg.addEventListener('updatefound', function() {
+                    var nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', function() {
+                        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                            nw.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    });
+                });
+            })
+            .catch(function(err) { console.warn('SW register failed', err); });
+    });
+}
 </script>
 </body>
 </html>
