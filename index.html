@@ -622,7 +622,8 @@ button.full { width: 100%; margin-top: 10px; }
 // ============================================================
 //  КОНФИГУРАЦИЯ
 // ============================================================
-var ABLY_KEY = 'ЗАМЕНИТЕ_НА_ВАШ_ABLY_API_KEY';
+// ⚠️ Вставьте сюда НОВЫЙ ключ с ably.com (старый скомпрометирован!)
+var ABLY_KEY = 'ЗАМЕНИТЕ_НА_НОВЫЙ_ABLY_КЛЮЧ';
 
 function showError(msg) {
     var bar = document.getElementById('error-bar'); if (!bar) return;
@@ -1503,7 +1504,7 @@ function connectAbly() {
     if (ably) return;
     try {
         ably = new Ably.Realtime({
-            key: 
+            key: bWg79A.jbXkqA:edZvLA7Yg33dt_ykZAbWFAYGm7ex5rjt2DcmhQwHPEs,
             clientId: myId,
             echoMessages: false
         });
