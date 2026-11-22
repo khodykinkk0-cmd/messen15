@@ -119,7 +119,8 @@ button.full { width: 100%; margin-top: 10px; }
 #invite-modal, #confirm-modal, #sound-settings-modal, #profile-modal, #call-modal,
 #myid-modal, #import-modal, #export-modal, #account-modal, #logout-modal,
 #settings-modal, #blacklist-modal, #user-action-modal, #dm-list-modal,
-#browser-modal, #join-modal, #invite-p2p-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+#browser-modal, #join-modal, #invite-p2p-modal, #file-modal, #cloud-modal {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.85); z-index: 200; align-items: center;
     justify-content: center; padding: 20px; overflow-y: auto; }
 #sound-settings-modal { z-index: 300; }
@@ -128,14 +129,15 @@ button.full { width: 100%; margin-top: 10px; }
 #account-modal, #logout-modal { z-index: 600; }
 #settings-modal { z-index: 650; }
 #blacklist-modal, #user-action-modal, #dm-list-modal, #browser-modal,
-#join-modal, #invite-p2p-modal { z-index: 700; }
+#join-modal, #invite-p2p-modal, #file-modal, #cloud-modal { z-index: 700; }
 #invite-modal.visible, #confirm-modal.visible, #sound-settings-modal.visible,
 #profile-modal.visible, #call-modal.visible,
 #myid-modal.visible, #import-modal.visible, #export-modal.visible,
 #account-modal.visible, #logout-modal.visible,
 #settings-modal.visible, #blacklist-modal.visible,
 #user-action-modal.visible, #dm-list-modal.visible, #browser-modal.visible,
-#join-modal.visible, #invite-p2p-modal.visible { display: flex; }
+#join-modal.visible, #invite-p2p-modal.visible, #file-modal.visible, #cloud-modal.visible {
+    display: flex; }
 .invite-card { background: #0f1722; border: 1px solid #2a3a4a; border-radius: 16px;
     padding: 20px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
 .invite-card h3 { color: #ffaa44; font-size: 16px; margin-bottom: 12px; text-align: center; }
@@ -169,8 +171,6 @@ button.full { width: 100%; margin-top: 10px; }
 .install-panel li { margin-bottom: 8px; }
 .install-panel code { background: #1a2a3a; padding: 2px 8px; border-radius: 6px;
     color: #ffdd88; font-size: 13px; word-break: break-all; }
-.install-panel .note { background: #1a2a3a; border-left: 3px solid #ffaa44;
-    padding: 10px 12px; border-radius: 6px; margin: 12px 0; font-size: 13px; color: #c0e0ff; }
 .install-card .close-btn { width: 100%; margin-top: 16px; background: #2a3a4a;
     color: #c0e0ff; border: none; border-radius: 10px; padding: 14px;
     font-family: inherit; font-weight: bold; font-size: 15px; cursor: pointer; min-height: 48px; }
@@ -223,6 +223,9 @@ button.full { width: 100%; margin-top: 10px; }
 .device-note { background: #1a2a3a; border-left: 3px solid #88aacc;
     padding: 8px 10px; border-radius: 6px; margin-bottom: 10px;
     font-size: 11px; color: #c0e0ff; line-height: 1.5; }
+details summary { color: #88ddff; cursor: pointer; }
+details ol { font-size: 12px; color: #c0e0ff; line-height: 1.7; margin-top: 8px; padding-left: 18px; }
+details code { background: #1a2a3a; padding: 2px 6px; border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -250,11 +253,19 @@ button.full { width: 100%; margin-top: 10px; }
         </div>
 
         <div id="main-menu" style="display:none;">
+            <div class="step" id="rooms-block">
+                <h2>Мои комнаты</h2>
+                <div id="rooms-list"></div>
+            </div>
             <div class="step">
-                <h2>Комнаты</h2>
-                <p class="hint">P2P-режим: хост создаёт комнату, гости подключаются по инвайт-коду. Хост должен быть онлайн.</p>
-                <button type="button" class="big" onclick="showCreateRoom()" style="margin-top:8px;">🆕 Создать комнату (хост)</button>
-                <button type="button" class="big secondary" onclick="showJoinRoom()" style="margin-top:8px;">🔗 Присоединиться по инвайту</button>
+                <h2>Создать</h2>
+                <button type="button" class="big" onclick="showCreateRoom()" style="margin-top:8px;">🆕 P2P-комната (хост)</button>
+                <button type="button" class="big" onclick="showCloudCreate()" style="margin-top:8px;">☁️ Облачная комната</button>
+            </div>
+            <div class="step">
+                <h2>Присоединиться</h2>
+                <button type="button" class="big secondary" onclick="showJoinRoom()" style="margin-top:8px;">🔗 P2P по инвайту</button>
+                <button type="button" class="big secondary" onclick="showCloudJoin()" style="margin-top:8px;">☁️ Облачная по инвайту</button>
             </div>
             <div class="step">
                 <h2>Ещё</h2>
@@ -269,6 +280,7 @@ button.full { width: 100%; margin-top: 10px; }
             <div id="chat-header">
                 <span>Комната: <span class="room-code" id="header-code">---</span></span>
                 <div class="header-right">
+                    <button type="button" class="sound-btn" id="file-btn" onclick="openFileModal()" title="Файл комнаты">📁</button>
                     <button type="button" class="sound-btn" onclick="openBrowser()" title="Открыть ссылку">🌐</button>
                     <button type="button" class="call-btn" id="call-btn" onclick="startCall()" title="Позвонить">📞</button>
                     <button type="button" class="sound-btn" id="sound-btn" onclick="toggleSound()">🔊</button>
@@ -288,26 +300,96 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
-<!-- HOST: invite modal -->
+<!-- FILE MODAL -->
+<div id="file-modal">
+    <div class="invite-card">
+        <h3>📁 Файл комнаты</h3>
+        <p class="note">
+            Переписка хранится в JSON-файле. Передавайте через любой канал — Telegram, email, облако.
+        </p>
+        <div style="background:#1a2a3a;padding:12px;border-radius:8px;margin:12px 0;">
+            <div style="font-size:12px;color:#889;">Комната:</div>
+            <div id="file-room-code" style="font-family:monospace;font-size:14px;color:#ffdd88;font-weight:bold;">---</div>
+            <div style="font-size:12px;color:#889;margin-top:10px;">
+                Сообщений: <b id="file-msg-count" style="color:#c0e0ff;">0</b>
+            </div>
+            <div style="font-size:12px;color:#889;margin-top:4px;">
+                Не синхронизировано: <b id="file-pending-count" style="color:#ffaa44;">0</b>
+            </div>
+        </div>
+        <button type="button" class="big" onclick="downloadRoomFile()">💾 Сохранить файл</button>
+        <button type="button" class="big secondary" onclick="openRoomFilePicker()" style="margin-top:8px;">📥 Открыть файл (объединить)</button>
+        <button type="button" class="secondary full" onclick="shareRoomFile()" style="margin-top:8px;">📤 Поделиться</button>
+        <button type="button" class="close-btn" onclick="closeModal('file-modal')">Закрыть</button>
+    </div>
+</div>
+
+<!-- CLOUD MODAL -->
+<div id="cloud-modal">
+    <div class="invite-card">
+        <h3>☁️ Облачная комната</h3>
+
+        <div id="cloud-create-tab">
+            <p class="note">
+                Комната хранится в <b>зашифрованном</b> виде на GitHub Gist.
+                GitHub видит только шифротекст.
+            </p>
+            <label style="display:block;font-size:13px;color:#889;margin-top:12px;">GitHub Token (scope: gist):</label>
+            <input id="cloud-token" type="text" placeholder="ghp_..." style="font-size:13px;">
+            <label style="display:block;font-size:13px;color:#889;margin-top:12px;">Пароль комнаты:</label>
+            <input id="cloud-password" type="text" placeholder="минимум 6 символов" style="font-size:15px;">
+            <button type="button" class="full" onclick="doCloudCreate()" style="margin-top:14px;">Создать комнату</button>
+            <div id="cloud-create-status" class="note" style="text-align:center;"></div>
+            <details style="margin-top:14px;">
+                <summary>Как получить токен?</summary>
+                <ol>
+                    <li>github.com → Settings → Developer settings</li>
+                    <li>Personal access tokens → Tokens (classic)</li>
+                    <li>Generate new token (classic)</li>
+                    <li>Scope: только <b>gist</b></li>
+                    <li>Скопируйте <code>ghp_...</code></li>
+                </ol>
+            </details>
+            <button type="button" class="secondary full" onclick="closeModal('cloud-modal')" style="margin-top:8px;">Отмена</button>
+        </div>
+
+        <div id="cloud-join-tab" style="display:none;">
+            <p class="note">Вставьте инвайт-код от хоста:</p>
+            <textarea id="cloud-invite-input" placeholder="PULYA2:..." style="min-height:120px;"></textarea>
+            <button type="button" class="full" onclick="doCloudJoin()">Подключиться</button>
+            <div id="cloud-join-status" class="note" style="text-align:center;"></div>
+            <button type="button" class="secondary full" onclick="closeModal('cloud-modal')" style="margin-top:8px;">Отмена</button>
+        </div>
+
+        <div id="cloud-invite-tab" style="display:none;">
+            <p class="note" style="color:#44ff88;">✅ Комната создана! Отправьте этот код друзьям:</p>
+            <textarea id="cloud-invite-output" readonly style="min-height:140px;"></textarea>
+            <button type="button" class="secondary full" onclick="copyField('cloud-invite-output', this)">📋 Скопировать</button>
+            <button type="button" class="full" onclick="closeModal('cloud-modal'); enterCloudRoomUI()">Войти в комнату</button>
+        </div>
+    </div>
+</div>
+
+<!-- P2P HOST -->
 <div id="invite-p2p-modal">
     <div class="invite-card">
         <h3>📤 Приглашение гостя</h3>
-        <p class="note">1. Скопируйте код и отправьте другу в любом мессенджере.</p>
+        <p class="note">1. Скопируйте код и отправьте другу.</p>
         <textarea id="host-invite-text" readonly placeholder="Генерация..."></textarea>
         <button type="button" class="secondary full" onclick="copyField('host-invite-text', this)">📋 Скопировать</button>
-        <p class="note">2. Вставьте ответ, который пришлёт друг:</p>
+        <p class="note">2. Вставьте ответ от друга:</p>
         <textarea id="host-answer-text" placeholder="PULYA1:..."></textarea>
         <button type="button" class="full" onclick="hostAcceptAnswer()">✅ Подключить</button>
         <button type="button" class="secondary full" onclick="closeModal('invite-p2p-modal')">Закрыть</button>
     </div>
 </div>
 
-<!-- GUEST: join modal -->
+<!-- P2P GUEST -->
 <div id="join-modal">
     <div class="invite-card">
         <h3>🔗 Присоединиться</h3>
         <div id="join-step-1">
-            <p class="note">Вставьте приглашение от хоста:</p>
+            <p class="note">Вставьте приглашение:</p>
             <textarea id="guest-invite-text" placeholder="PULYA1:..."></textarea>
             <button type="button" class="full" onclick="guestProcessInvite()">Далее</button>
         </div>
@@ -315,22 +397,23 @@ button.full { width: 100%; margin-top: 10px; }
             <p class="note">Скопируйте ответ и отправьте хосту:</p>
             <textarea id="guest-answer-text" readonly></textarea>
             <button type="button" class="secondary full" onclick="copyField('guest-answer-text', this)">📋 Скопировать</button>
-            <p class="note" id="guest-status">⏳ Ждём, пока хост вставит ваш ответ...</p>
+            <p class="note" id="guest-status">⏳ Ждём хоста...</p>
         </div>
-        <button type="button" class="secondary full" onclick="closeModal('join-modal'); backToMainMenu()">Отмена</button>
+        <button type="button" class="secondary full" onclick="closeModal('join-modal'); showMainMenu()">Отмена</button>
     </div>
 </div>
 
-<!-- INVITE old (для совместимости с invite-btn) -->
+<!-- INVITE old -->
 <div id="invite-modal">
     <div class="invite-card">
         <h3>Комната</h3>
         <div class="code-big" id="modal-code">---</div>
-        <p class="note" style="text-align:center;">Гости подключаются по инвайт-коду (P2P). Используйте кнопку «Пригласить».</p>
+        <p class="note" style="text-align:center;">Используйте «+ Пригласить» для P2P или файл/облако.</p>
         <button type="button" class="secondary full" onclick="closeModal('invite-modal')">Закрыть</button>
     </div>
 </div>
 
+<!-- CONFIRM -->
 <div id="confirm-modal">
     <div class="invite-card">
         <h3>Очистить историю?</h3>
@@ -342,9 +425,10 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
+<!-- SOUND -->
 <div id="sound-settings-modal">
     <div class="invite-card">
-        <h3>🎵 Звук уведомления</h3>
+        <h3>🎵 Звук</h3>
         <button type="button" class="sound-choice" data-type="telegram" onclick="setSoundType('telegram')">
             <span class="icon-play">▶</span><span class="title">Динь-дон</span>
         </button>
@@ -361,6 +445,7 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
+<!-- PROFILE -->
 <div id="profile-modal">
     <div class="invite-card">
         <h3>Редактировать профиль</h3>
@@ -373,24 +458,26 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
+<!-- CALL -->
 <div id="call-modal">
     <div class="invite-card"><div id="call-modal-content" style="text-align:center;"></div></div>
 </div>
 
+<!-- MYID -->
 <div id="myid-modal">
     <div class="invite-card">
         <h3>🔑 Ваш ID</h3>
-        <p class="note">ID этого устройства. В P2P-режиме профиль хранится только локально, восстановление — через экспорт JSON.</p>
+        <p class="note">ID устройства.</p>
         <div class="code-big" id="myid-value">---</div>
         <button type="button" class="secondary full" onclick="copyField('myid-value', this)">📋 Скопировать</button>
         <button type="button" class="close-btn" onclick="closeModal('myid-modal')">Закрыть</button>
     </div>
 </div>
 
+<!-- EXPORT -->
 <div id="export-modal">
     <div class="invite-card">
         <h3>💾 Экспорт профиля</h3>
-        <p class="note">Сохраните этот JSON — по нему сможете восстановить профиль и комнаты на другом устройстве.</p>
         <textarea id="export-text" readonly style="min-height:150px;"></textarea>
         <button type="button" class="secondary full" onclick="copyField('export-text', this)">📋 Скопировать</button>
         <button type="button" class="full" onclick="downloadExport()">💾 Скачать .json</button>
@@ -398,17 +485,18 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
+<!-- IMPORT -->
 <div id="import-modal">
     <div class="invite-card">
         <h3>📥 Импорт профиля</h3>
-        <p class="note">Вставьте JSON-экспорт с другого устройства.</p>
-        <textarea id="import-text" placeholder='{"name":"...","avatar":"...","rooms":[...]}' style="min-height:150px;"></textarea>
+        <textarea id="import-text" placeholder='{"name":"..."}' style="min-height:150px;"></textarea>
         <button type="button" class="full" onclick="doImport()">Импортировать</button>
         <div id="import-status" class="note"></div>
         <button type="button" class="close-btn" onclick="closeModal('import-modal')">Закрыть</button>
     </div>
 </div>
 
+<!-- ACCOUNT -->
 <div id="account-modal">
     <div class="invite-card">
         <h3>👤 Аккаунт</h3>
@@ -416,7 +504,7 @@ button.full { width: 100%; margin-top: 10px; }
             <div id="acc-avatar" style="font-size:56px;">😀</div>
             <div style="flex:1;">
                 <div id="acc-name" style="font-size:20px; font-weight:bold; color:#ffdd88; word-break:break-word;">Аноним</div>
-                <div style="font-size:12px; color:#889; margin-top:4px;">P2P-профиль</div>
+                <div style="font-size:12px; color:#889; margin-top:4px;">Профиль</div>
             </div>
         </div>
         <div style="padding:14px 0; border-bottom:1px solid #2a3a4a;">
@@ -440,8 +528,8 @@ button.full { width: 100%; margin-top: 10px; }
 
 <div id="logout-modal">
     <div class="invite-card">
-        <h3>Выйти из аккаунта?</h3>
-        <p class="note" style="text-align:center;">Профиль и комнаты будут удалены. Сохраните экспорт перед выходом!</p>
+        <h3>Выйти?</h3>
+        <p class="note" style="text-align:center;">Данные будут удалены. Сохраните экспорт!</p>
         <div class="btn-row">
             <button type="button" class="secondary" onclick="closeModal('logout-modal')">Отмена</button>
             <button type="button" onclick="doLogout()">Выйти</button>
@@ -449,10 +537,11 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
+<!-- SETTINGS -->
 <div id="settings-modal">
     <div class="invite-card">
         <h3>⚙️ Настройки</h3>
-        <div class="device-note">🖥️ Все режимы применяются только к этому устройству.</div>
+        <div class="device-note">🖥️ Только для этого устройства.</div>
         <button type="button" class="sound-choice" id="incognito-btn" onclick="toggleIncognito()">
             <span class="icon-play">🥷</span>
             <span class="title">Инкогнито <span class="sub" id="incognito-status">Выключен</span></span>
@@ -511,7 +600,7 @@ button.full { width: 100%; margin-top: 10px; }
         </div>
         <div class="dm-messages" id="dm-messages"></div>
         <div class="dm-input-row">
-            <input id="dm-input" placeholder="Сообщение..." autocomplete="off" enterkeyhint="send">
+            <input id="dm-input" placeholder="Сообщение..." autocomplete="off">
             <button type="button" onclick="sendDm()">➤</button>
         </div>
     </div>
@@ -527,7 +616,7 @@ button.full { width: 100%; margin-top: 10px; }
 </div>
 
 <div id="ios-install">
-    <b>📥 Установить приложение</b><br>
+    <b>📥 Установить</b><br>
     На iPhone/iPad: <b>«Поделиться»</b> → <b>«На экран "Домой"»</b>
     <br>
     <button type="button" onclick="document.getElementById('ios-install').classList.remove('visible')">Понятно</button>
@@ -562,7 +651,6 @@ button.full { width: 100%; margin-top: 10px; }
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 <script>
 'use strict';
 
@@ -636,36 +724,46 @@ var incognito = localStorage.getItem('chat-incognito') === 'on';
 var incognito2 = false;
 try { incognito2 = localStorage.getItem('chat-incognito2') === 'on'; } catch(e){}
 
-// P2P state
-var role = null;              // 'host' | 'guest'
+// P2P
+var role = null;
 var roomCode = null;
-var hostSlots = {};           // slotId -> {pc, dc, slotId, state, guestInfo}
+var hostSlots = {};
 var hostPendingSlot = null;
-var guestConn = null;         // {pc, dc, hostInfo, slot}
-var peers = {};               // id -> {name, avatar, role}
+var guestConn = null;
+var peers = {};
 var pendingMessages = [];
 var seenMsgIds = {};
 
-// медиа-звонки
+// Cloud
+var cloud = {
+    enabled: false, gistId: null, token: null, password: null,
+    code: null, etag: null, pollTimer: null, pushLock: false,
+    decrypted: {}, salt: null, cryptoKey: null
+};
+
+// File
+var lastExportCount = 0;
+
+// Calls
 var callPc = null, localStream = null, callPeerId = null, callActive = false, callIncoming = false;
 var ICE_CONFIG = { iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun.cloudflare.com:3478' }
 ]};
 
+// History
 var HISTORY_KEY = null;
 var HISTORY_LIMIT = 200;
 var historyCache = [];
 var lastRenderedDay = null;
 
 // ============================================================
-//  STORAGE (учёт инкогнито 2)
+//  STORAGE
 // ============================================================
 function dataStore() { return incognito2 ? sessionStorage : localStorage; }
 function getDisplayName() { return incognito ? 'Аноним' : myName; }
 function getDisplayAvatar() { return incognito ? '🥷' : myAvatar; }
 
-// Профиль
 function loadProfile() {
     try {
         var d = dataStore().getItem('chat-profile');
@@ -687,7 +785,6 @@ function saveProfile() {
     showMainMenu();
 }
 
-// История
 function loadHistory() {
     if (!HISTORY_KEY) return [];
     try {
@@ -759,7 +856,7 @@ function getDmThreads() {
     return res;
 }
 
-// Чёрный список
+// Blacklist
 function getBlacklist() {
     try { var d = localStorage.getItem('chat-blacklist'); return d ? JSON.parse(d) : []; }
     catch(e){ return []; }
@@ -788,39 +885,141 @@ function removeFromBlacklist(id) {
 }
 
 // ============================================================
-//  CODEC (сжатие invite через pako)
+//  ROOMS
+// ============================================================
+function getRooms() {
+    try {
+        var d = localStorage.getItem('chat-rooms');
+        if (!d) return [];
+        var arr = JSON.parse(d);
+        if (!Array.isArray(arr)) return [];
+        return arr.map(function(x){
+            if (typeof x === 'string') return { code: x, role: '?', addedAt: 0, lastMsg: '', lastT: 0 };
+            return x;
+        });
+    } catch(e) { return []; }
+}
+function saveRooms(arr) {
+    try { localStorage.setItem('chat-rooms', JSON.stringify(arr)); } catch(e){}
+}
+function addRoom(code, role) {
+    if (!code) return;
+    var rooms = getRooms();
+    var existing = rooms.find(function(r){ return r.code === code; });
+    if (existing) {
+        if (role) existing.role = role;
+        saveRooms(rooms);
+        return;
+    }
+    rooms.unshift({ code: code, role: role || '?', addedAt: Date.now(), lastMsg: '', lastT: 0 });
+    saveRooms(rooms);
+}
+function removeRoom(code) {
+    saveRooms(getRooms().filter(function(r){ return r.code !== code; }));
+}
+function updateRoomLastMsg(code, text, ts) {
+    var rooms = getRooms();
+    var r = rooms.find(function(x){ return x.code === code; });
+    if (r) {
+        r.lastMsg = String(text || '').slice(0, 60);
+        r.lastT = ts || Date.now();
+        saveRooms(rooms);
+    }
+}
+function renderMainMenu() {
+    var box = $('rooms-list');
+    if (!box) return;
+    box.innerHTML = '';
+    var rooms = getRooms();
+    if (!rooms.length) {
+        box.innerHTML = '<p class="hint" style="text-align:center;">У вас пока нет комнат.</p>';
+        return;
+    }
+    rooms.forEach(function(r) {
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1a2a3a;border-radius:10px;margin-bottom:8px;flex-wrap:wrap;';
+        var info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0;';
+        var name = document.createElement('div');
+        name.style.cssText = 'font-family:monospace;font-weight:bold;color:#ffdd88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        var icon = r.role === 'host' ? '👑 ' : r.role === 'cloud' ? '☁️ ' : r.role === 'file' ? '📁 ' : '';
+        name.textContent = icon + r.code;
+        info.appendChild(name);
+        if (r.lastMsg) {
+            var last = document.createElement('div');
+            last.style.cssText = 'font-size:11px;color:#889;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+            last.textContent = r.lastMsg + (r.lastT ? ' · ' + fmtTime(r.lastT) : '');
+            info.appendChild(last);
+        }
+        div.appendChild(info);
+
+        var openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.textContent = 'Войти';
+        openBtn.style.cssText = 'flex:0 0 auto;min-height:36px;padding:6px 14px;font-size:13px;';
+        openBtn.onclick = function(){ openRoomFromList(r); };
+        div.appendChild(openBtn);
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = '✕';
+        delBtn.style.cssText = 'flex:0 0 auto;min-height:36px;padding:6px 10px;font-size:13px;background:#3a2a2a;color:#ff8888;';
+        delBtn.onclick = function(){
+            removeRoom(r.code);
+            try { localStorage.removeItem('chat-history-' + r.code); } catch(e){}
+            renderMainMenu();
+        };
+        div.appendChild(delBtn);
+        box.appendChild(div);
+    });
+}
+function openRoomFromList(r) {
+    if (r.role === 'cloud') {
+        if (!cloud.enabled || cloud.code !== r.code) {
+            role = 'guest';
+            $('guest-invite-text').value = '';
+            $('join-step-1').style.display = 'block';
+            $('join-step-2').style.display = 'none';
+            $('guest-answer-text').value = '';
+            $('guest-status').textContent =
+                '📌 Комната ' + r.code + ' — облачная. Нужен инвайт от хоста. ' +
+                'Попросите его и используйте «☁️ Присоединиться по инвайту».';
+            $('guest-status').className = 'note';
+            $('join-modal').classList.add('visible');
+        }
+        return;
+    }
+    // P2P/файл — через invite
+    role = 'guest';
+    $('guest-invite-text').value = '';
+    $('join-step-1').style.display = 'block';
+    $('join-step-2').style.display = 'none';
+    $('guest-answer-text').value = '';
+    $('guest-status').textContent =
+        '📌 Комната ' + r.code + '. Нужен свежий invite от хоста (P2P) или файл/облачный инвайт.';
+    $('guest-status').className = 'note';
+    $('join-modal').classList.add('visible');
+}
+
+// ============================================================
+//  CODEC
 // ============================================================
 function encodeInvite(obj) {
     var json = JSON.stringify(obj);
-    if (typeof pako === 'undefined') {
-        var bytes = new TextEncoder().encode(json);
-        var bin = '';
-        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-        return 'PULYA1P:' + btoa(bin);
-    }
-    var comp = pako.deflate(json, { level: 9 });
-    var b = '';
-    for (var j = 0; j < comp.length; j++) b += String.fromCharCode(comp[j]);
-    return 'PULYA1:' + btoa(b);
+    var bytes = new TextEncoder().encode(json);
+    var bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return 'PULYA1:' + btoa(bin);
 }
 function decodeInvite(str) {
     str = String(str || '').trim();
-    var json;
-    if (str.indexOf('PULYA1:') === 0) {
-        if (typeof pako === 'undefined') throw new Error('pako не загружен');
-        var bin = atob(str.slice(7));
-        var bytes = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        json = pako.inflate(bytes, { to: 'string' });
-    } else if (str.indexOf('PULYA1P:') === 0) {
-        var b2 = atob(str.slice(8));
-        var bytes2 = new Uint8Array(b2.length);
-        for (var k = 0; k < b2.length; k++) bytes2[k] = b2.charCodeAt(k);
-        json = new TextDecoder().decode(bytes2);
-    } else {
+    if (str.indexOf('PULYA1:') !== 0) {
         throw new Error('Неверный формат. Ожидается PULYA1:...');
     }
-    return JSON.parse(json);
+    var bin = atob(str.slice(7));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return JSON.parse(new TextDecoder().decode(bytes));
 }
 function waitForICE(pc, ms) {
     ms = ms || 5000;
@@ -834,7 +1033,543 @@ function waitForICE(pc, ms) {
 }
 
 // ============================================================
-//  UI: МЕНЮ
+//  FILE
+// ============================================================
+function stableMid(msg) {
+    if (msg.mid) return msg.mid;
+    var sig = (msg.from || '') + '|' + (msg.t || 0) + '|' + (msg.text || '').slice(0, 40);
+    var h = 0;
+    for (var i = 0; i < sig.length; i++) {
+        h = ((h << 5) - h) + sig.charCodeAt(i);
+        h |= 0;
+    }
+    return 'm_' + Math.abs(h).toString(36) + '_' + (msg.t || 0);
+}
+
+function roomFileData() {
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < historyCache.length; i++) {
+        var m = historyCache[i];
+        if (m.kind !== 'msg') continue;
+        var mid = stableMid(m);
+        if (seen[mid]) continue;
+        seen[mid] = true;
+        out.push({
+            mid: mid,
+            from: m.from || (m.isMe ? myId : 'unknown'),
+            fromName: m.name || '',
+            fromAvatar: m.avatar || '😀',
+            text: m.text,
+            ts: m.t
+        });
+    }
+    out.sort(function(a,b){ return a.ts - b.ts; });
+    return {
+        v: 1,
+        app: 'pulya',
+        code: roomCode,
+        exportedAt: Date.now(),
+        author: { id: myId, name: getDisplayName(), avatar: getDisplayAvatar() },
+        messages: out
+    };
+}
+
+function updateFileButton() {
+    var btn = $('file-btn');
+    if (!btn) return;
+    if (!roomCode) { btn.textContent = '📁'; return; }
+    var pending = Math.max(0, historyCache.length - lastExportCount);
+    btn.textContent = pending > 0 ? '📁 (' + pending + ')' : '📁';
+}
+function updateFileModalStats() {
+    if (!roomCode) {
+        if ($('file-room-code')) $('file-room-code').textContent = '---';
+        if ($('file-msg-count')) $('file-msg-count').textContent = '0';
+        if ($('file-pending-count')) $('file-pending-count').textContent = '0';
+        return;
+    }
+    if ($('file-room-code')) $('file-room-code').textContent = roomCode;
+    var msgCount = historyCache.filter(function(m){ return m.kind === 'msg'; }).length;
+    if ($('file-msg-count')) $('file-msg-count').textContent = String(msgCount);
+    var pending = Math.max(0, historyCache.length - lastExportCount);
+    if ($('file-pending-count')) $('file-pending-count').textContent = String(pending);
+}
+function openFileModal() {
+    if (!roomCode) return showError('Сначала войдите в комнату');
+    updateFileModalStats();
+    $('file-modal').classList.add('visible');
+}
+function downloadRoomFile() {
+    if (!roomCode) return showError('Нет комнаты');
+    var data = roomFileData();
+    if (!data.messages.length) return showError('Пока нет сообщений');
+    var json = JSON.stringify(data, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'pulya-' + roomCode + '.json';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+    lastExportCount = historyCache.length;
+    updateFileModalStats();
+    updateFileButton();
+    showError('✅ Файл сохранён');
+}
+function shareRoomFile() {
+    if (!roomCode) return showError('Нет комнаты');
+    var data = roomFileData();
+    if (!data.messages.length) return showError('Пока нет сообщений');
+    var json = JSON.stringify(data, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var file = new File([blob], 'pulya-' + roomCode + '.json', { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Пуля: ' + roomCode }).then(function() {
+            lastExportCount = historyCache.length;
+            updateFileModalStats();
+            updateFileButton();
+        }).catch(function(e){ if (e.name !== 'AbortError') showError(e.message); });
+    } else {
+        downloadRoomFile();
+    }
+}
+function openRoomFilePicker() {
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.json,application/json';
+    inp.onchange = function(e) {
+        var f = e.target.files && e.target.files[0];
+        if (f) importRoomFile(f);
+    };
+    inp.click();
+}
+async function importRoomFile(file) {
+    try {
+        if (file.size > 5 * 1024 * 1024) throw new Error('Файл больше 5 МБ');
+        var text = await file.text();
+        var data = JSON.parse(text);
+        if (data.app !== 'pulya') throw new Error('Это не файл Пули');
+        if (!Array.isArray(data.messages)) throw new Error('Нет массива messages');
+        var added = mergeRoomMessages(data);
+        updateFileModalStats();
+        updateFileButton();
+        renderStoredHistory();
+        if (added > 0) showError('✅ Импортировано ' + added + ' сообщений');
+        else showError('Новых сообщений нет');
+    } catch (err) { showError('Ошибка: ' + err.message); }
+}
+function mergeRoomMessages(data) {
+    if (!roomCode) {
+        roomCode = data.code || genRoomCode();
+        addRoom(roomCode, 'file');
+        HISTORY_KEY = 'chat-history-' + roomCode;
+        historyCache = loadHistory();
+        $('header-code').textContent = roomCode;
+        $('setup').style.display = 'none';
+        document.querySelector('h1').style.display = 'none';
+        $('main').classList.add('visible');
+        setStatus('🟢 Комната ' + roomCode + ' (файл)', 'online');
+    } else if (data.code && data.code !== roomCode) {
+        if (!confirm('Файл от "' + data.code + '". Импортировать в "' + roomCode + '"?')) {
+            throw new Error('Импорт отменён');
+        }
+    }
+    var existing = {};
+    for (var i = 0; i < historyCache.length; i++) {
+        var m = historyCache[i];
+        if (m.kind === 'msg') existing[stableMid(m)] = true;
+    }
+    var added = 0;
+    for (var j = 0; j < data.messages.length; j++) {
+        var msg = data.messages[j];
+        var mid = msg.mid || stableMid(msg);
+        if (existing[mid]) continue;
+        existing[mid] = true;
+        historyCache.push({
+            kind: 'msg', mid: mid,
+            from: msg.from,
+            name: msg.fromName || '?',
+            text: String(msg.text || ''),
+            isMe: msg.from === myId,
+            t: msg.ts || Date.now(),
+            avatar: msg.fromAvatar || '😀'
+        });
+        added++;
+    }
+    historyCache.sort(function(a,b){ return (a.t||0) - (b.t||0); });
+    if (historyCache.length > HISTORY_LIMIT * 4) historyCache = historyCache.slice(-HISTORY_LIMIT * 4);
+    saveHistory();
+    if (added > 0) {
+        var last = historyCache[historyCache.length - 1];
+        if (last && last.kind === 'msg') updateRoomLastMsg(roomCode, last.text, last.t);
+    }
+    return added;
+}
+
+// ============================================================
+//  CLOUD (GitHub Gist + AES-GCM)
+// ============================================================
+function b64encode(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+}
+function b64decode(s) {
+    return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); });
+}
+async function pbkdf2(password, saltB64) {
+    var salt = b64decode(saltB64);
+    var enc = new TextEncoder();
+    var base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name:'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
+        base, { name:'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+    );
+}
+async function aesEncrypt(key, plaintextStr) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var enc = new TextEncoder().encode(plaintextStr);
+    var ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv: iv }, key, enc);
+    return { iv: b64encode(iv), ct: b64encode(new Uint8Array(ct)) };
+}
+async function aesDecrypt(key, ivB64, ctB64) {
+    var iv = b64decode(ivB64);
+    var ct = b64decode(ctB64);
+    var pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv: iv }, key, ct);
+    return new TextDecoder().decode(pt);
+}
+
+async function gistCreate(token, initialContent, description) {
+    var r = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'token ' + token,
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github+json'
+        },
+        body: JSON.stringify({
+            description: description || 'Pulya room',
+            public: false,
+            files: { 'room.pulya': { content: initialContent } }
+        })
+    });
+    if (!r.ok) throw new Error('Gist: ' + r.status + ' ' + (await r.text()).slice(0, 100));
+    var data = await r.json();
+    return data.id;
+}
+async function gistRead(gistId, token, etag) {
+    var headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' };
+    if (etag) headers['If-None-Match'] = etag;
+    var r = await fetch('https://api.github.com/gists/' + gistId, { headers: headers });
+    if (r.status === 304) return { notModified: true };
+    if (!r.ok) throw new Error('Gist read: ' + r.status);
+    var data = await r.json();
+    var newEtag = r.headers.get('ETag');
+    var content = data.files && data.files['room.pulya'] && data.files['room.pulya'].content;
+    return { etag: newEtag, content: content };
+}
+async function gistWrite(gistId, token, content, etag) {
+    var headers = {
+        'Authorization': 'token ' + token,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json'
+    };
+    if (etag) headers['If-Match'] = etag;
+    var r = await fetch('https://api.github.com/gists/' + gistId, {
+        method: 'PATCH',
+        headers: headers,
+        body: JSON.stringify({ files: { 'room.pulya': { content: content } } })
+    });
+    if (r.status === 412) return { conflict: true };
+    if (!r.ok) throw new Error('Gist write: ' + r.status);
+    return { etag: r.headers.get('ETag') };
+}
+
+async function buildEnvelope() {
+    var envelope = { v: 2, code: cloud.code, salt: cloud.salt, messages: [] };
+    for (var i = 0; i < historyCache.length; i++) {
+        var m = historyCache[i];
+        if (m.kind !== 'msg') continue;
+        var mid = stableMid(m);
+        var enc = cloud.decrypted[mid + '_enc'];
+        if (!enc) {
+            var plain = {
+                from: m.from || (m.isMe ? myId : 'unknown'),
+                fromName: m.name || '',
+                fromAvatar: m.avatar || '😀',
+                text: m.text,
+                ts: m.t
+            };
+            enc = await aesEncrypt(cloud.cryptoKey, JSON.stringify(plain));
+            cloud.decrypted[mid + '_enc'] = enc;
+            cloud.decrypted[mid] = plain;
+        }
+        envelope.messages.push({ mid: mid, iv: enc.iv, ct: enc.ct });
+    }
+    return envelope;
+}
+async function decryptEnvelope(envelope) {
+    var out = [];
+    for (var i = 0; i < envelope.messages.length; i++) {
+        var m = envelope.messages[i];
+        var cached = cloud.decrypted[m.mid];
+        if (cached) { out.push({ mid: m.mid, plain: cached }); continue; }
+        try {
+            var str = await aesDecrypt(cloud.cryptoKey, m.iv, m.ct);
+            var plain = JSON.parse(str);
+            cloud.decrypted[m.mid] = plain;
+            out.push({ mid: m.mid, plain: plain });
+        } catch(err) { console.warn('decrypt failed', m.mid); }
+    }
+    return out;
+}
+function mergeDecryptedMessages(messages) {
+    var existing = {};
+    for (var i = 0; i < historyCache.length; i++) {
+        if (historyCache[i].kind === 'msg') existing[stableMid(historyCache[i])] = true;
+    }
+    var added = 0;
+    for (var j = 0; j < messages.length; j++) {
+        var msg = messages[j];
+        if (existing[msg.mid]) continue;
+        existing[msg.mid] = true;
+        var p = msg.plain;
+        historyCache.push({
+            kind: 'msg', mid: msg.mid,
+            from: p.from,
+            name: p.fromName || '?',
+            text: p.text,
+            isMe: p.from === myId,
+            t: p.ts || Date.now(),
+            avatar: p.fromAvatar || '😀'
+        });
+        added++;
+    }
+    if (added > 0) {
+        historyCache.sort(function(a,b){ return (a.t||0) - (b.t||0); });
+        if (historyCache.length > HISTORY_LIMIT * 4) historyCache = historyCache.slice(-HISTORY_LIMIT * 4);
+        saveHistory();
+    }
+    return added;
+}
+
+async function cloudPull() {
+    if (!cloud.enabled) return;
+    try {
+        var r = await gistRead(cloud.gistId, cloud.token, cloud.etag);
+        if (r.notModified) return;
+        cloud.etag = r.etag;
+        var envelope = JSON.parse(r.content);
+        var messages = await decryptEnvelope(envelope);
+        var added = mergeDecryptedMessages(messages);
+        if (added > 0) {
+            renderStoredHistory();
+            updateFileButton();
+            var last = historyCache[historyCache.length - 1];
+            if (last && last.kind === 'msg') updateRoomLastMsg(cloud.code, last.text, last.t);
+            playNotify();
+        }
+    } catch(err) { console.warn('cloud pull:', err.message); }
+}
+async function cloudPush() {
+    if (!cloud.enabled || cloud.pushLock) return;
+    cloud.pushLock = true;
+    try {
+        for (var attempt = 0; attempt < 3; attempt++) {
+            var r = await gistRead(cloud.gistId, cloud.token, null);
+            cloud.etag = r.etag;
+            var remoteEnv = JSON.parse(r.content);
+            await decryptEnvelope(remoteEnv);
+            mergeDecryptedMessages(await decryptEnvelope(remoteEnv));
+            var envelope = await buildEnvelope();
+            var w = await gistWrite(cloud.gistId, cloud.token, JSON.stringify(envelope), cloud.etag);
+            if (w.conflict) continue;
+            cloud.etag = w.etag;
+            return;
+        }
+        showError('Не удалось синхронизировать (конфликт)');
+    } catch(err) { showError('Облако: ' + err.message); }
+    finally { cloud.pushLock = false; }
+}
+function startCloudPolling() {
+    stopCloudPolling();
+    cloud.pollTimer = setInterval(function() {
+        if (!document.hidden && cloud.enabled) cloudPull();
+    }, 10000);
+    cloudPull();
+}
+function stopCloudPolling() {
+    if (cloud.pollTimer) { clearInterval(cloud.pollTimer); cloud.pollTimer = null; }
+}
+document.addEventListener('visibilitychange', function() {
+    if (cloud.enabled && !document.hidden) cloudPull();
+});
+
+function showCloudCreate() {
+    $('cloud-create-tab').style.display = 'block';
+    $('cloud-join-tab').style.display = 'none';
+    $('cloud-invite-tab').style.display = 'none';
+    $('cloud-token').value = '';
+    $('cloud-password').value = '';
+    $('cloud-create-status').textContent = '';
+    $('cloud-create-status').className = 'note';
+    $('cloud-modal').classList.add('visible');
+}
+function showCloudJoin() {
+    $('cloud-create-tab').style.display = 'none';
+    $('cloud-join-tab').style.display = 'block';
+    $('cloud-invite-tab').style.display = 'none';
+    $('cloud-invite-input').value = '';
+    $('cloud-join-status').textContent = '';
+    $('cloud-modal').classList.add('visible');
+}
+
+async function doCloudCreate() {
+    var token = ($('cloud-token').value || '').trim();
+    var password = ($('cloud-password').value || '').trim();
+    var status = $('cloud-create-status');
+    if (!token || (token.indexOf('ghp_') !== 0 && token.indexOf('github_pat_') !== 0)) {
+        status.textContent = '❌ Нужен GitHub токен (ghp_...)';
+        status.className = 'note err';
+        return;
+    }
+    if (password.length < 6) {
+        status.textContent = '❌ Пароль минимум 6 символов';
+        status.className = 'note err';
+        return;
+    }
+    status.textContent = '⏳ Создаю gist...';
+    status.className = 'note';
+    try {
+        var code = genRoomCode();
+        var saltBytes = crypto.getRandomValues(new Uint8Array(16));
+        var salt = b64encode(saltBytes);
+        var key = await pbkdf2(password, salt);
+        var emptyEnv = { v: 2, code: code, salt: salt, messages: [] };
+        var gistId = await gistCreate(token, JSON.stringify(emptyEnv), 'Pulya: ' + code);
+
+        cloud.enabled = true;
+        cloud.gistId = gistId;
+        cloud.token = token;
+        cloud.password = password;
+        cloud.code = code;
+        cloud.salt = salt;
+        cloud.cryptoKey = key;
+        cloud.etag = null;
+        cloud.decrypted = {};
+
+        var invite = { v: 2, type: 'gist', gistId: gistId, token: token, password: password, code: code };
+        var inviteStr = 'PULYA2:' + btoa(unescape(encodeURIComponent(JSON.stringify(invite))));
+        $('cloud-invite-output').value = inviteStr;
+        $('cloud-create-tab').style.display = 'none';
+        $('cloud-invite-tab').style.display = 'block';
+    } catch(err) {
+        status.textContent = '❌ ' + err.message;
+        status.className = 'note err';
+    }
+}
+
+async function doCloudJoin() {
+    var str = ($('cloud-invite-input').value || '').trim();
+    var status = $('cloud-join-status');
+    if (!str) return;
+    if (str.indexOf('PULYA2:') !== 0) {
+        status.textContent = '❌ Неверный формат (PULYA2:...)';
+        status.className = 'note err';
+        return;
+    }
+    status.textContent = '⏳ Подключаюсь...';
+    status.className = 'note';
+    try {
+        var invite = JSON.parse(decodeURIComponent(escape(atob(str.slice(7)))));
+        if (invite.type !== 'gist') throw new Error('Не тот тип');
+        cloud.code = invite.code;
+        cloud.gistId = invite.gistId;
+        cloud.token = invite.token;
+        cloud.password = invite.password;
+        cloud.etag = null;
+        cloud.decrypted = {};
+
+        var r = await gistRead(cloud.gistId, cloud.token, null);
+        var envelope = JSON.parse(r.content);
+        cloud.etag = r.etag;
+        cloud.salt = envelope.salt;
+        cloud.cryptoKey = await pbkdf2(cloud.password, cloud.salt);
+        var messages = await decryptEnvelope(envelope);
+        mergeDecryptedMessages(messages);
+
+        cloud.enabled = true;
+        closeModal('cloud-modal');
+        enterCloudRoomUI();
+    } catch(err) {
+        status.textContent = '❌ ' + err.message;
+        status.className = 'note err';
+    }
+}
+
+function enterCloudRoomUI() {
+    role = 'host';
+    roomCode = cloud.code;
+    addRoom(cloud.code, 'cloud');
+    $('header-code').textContent = cloud.code;
+    HISTORY_KEY = 'chat-history-' + cloud.code;
+    var loaded = loadHistory();
+    for (var i = 0; i < loaded.length; i++) {
+        var m = loaded[i];
+        var mid = stableMid(m);
+        if (!historyCache.find(function(x){ return x.kind === 'msg' && stableMid(x) === mid; })) {
+            historyCache.push(m);
+        }
+    }
+    historyCache.sort(function(a,b){ return (a.t||0) - (b.t||0); });
+
+    $('setup').style.display = 'none';
+    document.querySelector('h1').style.display = 'none';
+    $('main').classList.add('visible');
+    $('messages').innerHTML = '';
+    lastRenderedDay = null;
+    if (historyCache.length) renderStoredHistory();
+    else addSys('Облачная комната. Синхронизация каждые 10 секунд.');
+    renderParts();
+    setStatus('🟢 Облако: ' + cloud.code, 'online');
+    $('invite-header-btn').style.display = 'none';
+    $('file-btn').style.display = '';
+    startCloudPolling();
+    updateFileButton();
+}
+
+async function cloudSendMessage(text) {
+    if (!cloud.enabled) return;
+    var ts = Date.now();
+    var mid = genMsgId();
+    var plain = {
+        from: myId,
+        fromName: getDisplayName(),
+        fromAvatar: getDisplayAvatar(),
+        text: text,
+        ts: ts
+    };
+    var enc = await aesEncrypt(cloud.cryptoKey, JSON.stringify(plain));
+    cloud.decrypted[mid] = plain;
+    cloud.decrypted[mid + '_enc'] = enc;
+    historyCache.push({
+        kind: 'msg', mid: mid,
+        from: myId,
+        name: getDisplayName(),
+        text: text,
+        isMe: true,
+        t: ts,
+        avatar: getDisplayAvatar()
+    });
+    saveHistory();
+    addMsg(text, null, true, ts);
+    updateRoomLastMsg(cloud.code, text, ts);
+    updateFileButton();
+    await cloudPush();
+}
+
+// ============================================================
+//  MENU
 // ============================================================
 function renderAvatarPicker(containerId, selected) {
     var box = $(containerId); box.innerHTML = '';
@@ -856,7 +1591,6 @@ function renderAvatarPicker(containerId, selected) {
         box.appendChild(btn);
     });
 }
-
 function updateInstallButtonsVisibility() {
     var standalone = window.matchMedia('(display-mode: standalone)').matches ||
                     window.navigator.standalone === true;
@@ -871,7 +1605,6 @@ function updateInstallButtonsVisibility() {
     if (hb) hb.style.display = onMain ? 'none' : '';
     if (mb) mb.style.display = '';
 }
-
 function showMainMenu() {
     leaveRoomCleanup();
     $('setup').style.display = 'block';
@@ -880,49 +1613,48 @@ function showMainMenu() {
     $('main').classList.remove('visible');
     document.querySelector('h1').style.display = 'flex';
     setStatus('Выберите действие');
+    renderMainMenu();
     updateInstallButtonsVisibility();
 }
-
-function backToMainMenu() { showMainMenu(); }
-
 function showCreateRoom() {
-    myName = ($('profile-name').value || myName || 'Хост').trim();
-    if (!myName) return showError('Сначала создайте профиль');
+    if (!myName) return showError('Сначала профиль');
     role = 'host';
     roomCode = genRoomCode();
+    addRoom(roomCode, 'host');
     $('header-code').textContent = roomCode;
     HISTORY_KEY = 'chat-history-' + roomCode;
     historyCache = loadHistory();
-
     $('setup').style.display = 'none';
     document.querySelector('h1').style.display = 'none';
     $('main').classList.add('visible');
     $('messages').innerHTML = '';
     lastRenderedDay = null;
+    lastExportCount = 0;
     if (historyCache.length) renderStoredHistory();
-    else addSys('Комната создана. Нажмите «+ Пригласить», чтобы позвать гостя.');
+    else addSys('Комната создана. Нажмите «+ Пригласить».');
     renderParts();
-    setStatus('🟢 Хост комнаты ' + roomCode, 'online');
+    setStatus('🟢 Хост ' + roomCode, 'online');
     $('invite-header-btn').style.display = '';
+    $('file-btn').style.display = '';
+    updateFileButton();
 }
-
 function showJoinRoom() {
-    if (!myName) return showError('Сначала создайте профиль');
+    if (!myName) return showError('Сначала профиль');
     role = 'guest';
     $('join-step-1').style.display = 'block';
     $('join-step-2').style.display = 'none';
     $('guest-invite-text').value = '';
     $('guest-answer-text').value = '';
-    $('guest-status').textContent = '⏳ Ждём, пока хост вставит ваш ответ...';
+    $('guest-status').textContent = '⏳ Ждём хоста...';
     $('guest-status').className = 'note';
     $('join-modal').classList.add('visible');
 }
 
 // ============================================================
-//  HOST LOGIC
+//  P2P HOST
 // ============================================================
 async function openInviteModal() {
-    if (role !== 'host') return showError('Только хост может приглашать');
+    if (role !== 'host' || cloud.enabled) return showError('Только для P2P-хоста');
     $('invite-p2p-modal').classList.add('visible');
     $('host-invite-text').value = 'Генерация...';
     $('host-answer-text').value = '';
@@ -938,7 +1670,6 @@ async function openInviteModal() {
         var slot = { pc: pc, dc: dc, slotId: slotId, state: 'offered', guestInfo: null };
         hostSlots[slotId] = slot;
         hostPendingSlot = slot;
-
         setupHostDC(slot);
         var offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -948,40 +1679,35 @@ async function openInviteModal() {
         $('host-invite-text').value = encodeInvite(invite);
     } catch(err) {
         $('host-invite-text').value = 'Ошибка: ' + err.message;
-        console.error(err);
     }
 }
-
 async function hostAcceptAnswer() {
     var text = $('host-answer-text').value.trim();
     if (!text) return showError('Вставьте ответ');
-    if (!hostPendingSlot) return showError('Сначала сгенерируйте приглашение');
+    if (!hostPendingSlot) return showError('Сначала приглашение');
     try {
         var ans = decodeInvite(text);
         if (ans.type !== 'answer') throw new Error('Это не ответ');
-        if (ans.slot !== hostPendingSlot.slotId) throw new Error('Ответ от другого приглашения');
+        if (ans.slot !== hostPendingSlot.slotId) throw new Error('Чужой ответ');
         await hostPendingSlot.pc.setRemoteDescription({ type:'answer', sdp:ans.sdp });
         hostPendingSlot.guestInfo = ans.from;
         hostPendingSlot.state = 'connecting';
         $('host-answer-text').value = '';
         closeModal('invite-p2p-modal');
-    } catch(err) {
-        showError('Ошибка: ' + err.message);
-    }
+    } catch(err) { showError('Ошибка: ' + err.message); }
 }
-
 function setupHostDC(slot) {
     slot.dc.onopen = function() {
         slot.state = 'connected';
         if (hostPendingSlot === slot) hostPendingSlot = null;
         var nm = slot.guestInfo ? slot.guestInfo.name : 'Гость';
-        peers[slot.guestInfo.id] = { name: nm, avatar:'😀', role:'guest' };
+        if (slot.guestInfo) peers[slot.guestInfo.id] = { name: nm, avatar:'😀', role:'guest' };
         addSys(nm + ' присоединился');
         hostBroadcastPresence();
         flushPending();
     };
     slot.dc.onmessage = function(e) {
-        try { hostOnMessage(JSON.parse(e.data), slot); } catch(err) { console.warn(err); }
+        try { hostOnMessage(JSON.parse(e.data), slot); } catch(err){}
     };
     slot.dc.onclose = function() {
         if (slot.state !== 'connected') return;
@@ -993,18 +1719,17 @@ function setupHostDC(slot) {
         hostBroadcastPresence();
     };
 }
-
 function hostOnMessage(msg, fromSlot) {
     if (msg._mid && seenMsgIds[msg._mid]) return;
     if (msg._mid) seenMsgIds[msg._mid] = Date.now();
-
     if (msg.type === 'msg') {
         if (msg.from && isBlacklisted(msg.from.id)) return;
         addMsg(msg.text, msg.from ? msg.from.name : '?', false, msg.ts, false, msg.from ? msg.from.avatar : null);
         addToHistory({kind:'msg', name: msg.from ? msg.from.name : '?', text: msg.text,
                       isMe:false, t: msg.ts || Date.now(), avatar: msg.from ? msg.from.avatar : null});
+        updateRoomLastMsg(roomCode, msg.text, msg.ts);
+        updateFileButton();
         playNotify();
-        // ретранслируем остальным
         var data = JSON.stringify(msg);
         for (var id in hostSlots) {
             var s = hostSlots[id];
@@ -1019,13 +1744,8 @@ function hostOnMessage(msg, fromSlot) {
         handleCallSignal(msg, fromSlot);
     }
 }
-
 function handleDmRelay(msg, fromSlot) {
-    // DM через хоста: если to == myId — это для хоста, иначе ретранслируем
-    if (msg.to === myId) {
-        handleDmIncoming(msg);
-        return;
-    }
+    if (msg.to === myId) { handleDmIncoming(msg); return; }
     for (var id in hostSlots) {
         var s = hostSlots[id];
         if (s.state === 'connected' && s.dc.readyState === 'open' &&
@@ -1035,27 +1755,19 @@ function handleDmRelay(msg, fromSlot) {
         }
     }
 }
-
 function handleCallSignal(msg, fromSlot) {
-    // Простейшая ретрансляция сигналинга между host и гостем
-    if (msg.to === myId) {
-        handleCallMessage(msg);
-    } else {
-        for (var id in hostSlots) {
-            var s = hostSlots[id];
-            if (s.state === 'connected' && s.guestInfo && s.guestInfo.id === msg.to) {
-                try { s.dc.send(JSON.stringify(msg)); } catch(e){}
-                return;
-            }
+    if (msg.to === myId) { handleCallMessage(msg); return; }
+    for (var id in hostSlots) {
+        var s = hostSlots[id];
+        if (s.state === 'connected' && s.guestInfo && s.guestInfo.id === msg.to) {
+            try { s.dc.send(JSON.stringify(msg)); } catch(e){}
+            return;
         }
     }
 }
-
 function hostBroadcastPresence() {
     var p = [{ id: myId, name: getDisplayName(), avatar: getDisplayAvatar(), role:'host' }];
-    for (var id in peers) {
-        p.push({ id: id, name: peers[id].name, avatar: peers[id].avatar, role:'guest' });
-    }
+    for (var id in peers) p.push({ id: id, name: peers[id].name, avatar: peers[id].avatar, role:'guest' });
     var data = JSON.stringify({ type:'presence', peers: p, room: roomCode });
     for (var sid in hostSlots) {
         var s = hostSlots[sid];
@@ -1067,7 +1779,7 @@ function hostBroadcastPresence() {
 }
 
 // ============================================================
-//  GUEST LOGIC
+//  P2P GUEST
 // ============================================================
 async function guestProcessInvite() {
     var text = $('guest-invite-text').value.trim();
@@ -1076,12 +1788,11 @@ async function guestProcessInvite() {
         var invite = decodeInvite(text);
         if (invite.type !== 'offer') throw new Error('Это не приглашение');
         roomCode = invite.room;
+        addRoom(roomCode, 'guest');
         HISTORY_KEY = 'chat-history-' + roomCode;
         historyCache = loadHistory();
-
         var pc = new RTCPeerConnection(ICE_CONFIG);
         guestConn = { pc:pc, hostInfo: invite.from, slot: invite.slot };
-
         pc.ondatachannel = function(e) {
             guestConn.dc = e.channel;
             setupGuestDC(e.channel);
@@ -1092,25 +1803,19 @@ async function guestProcessInvite() {
                 if (st) { st.textContent = '❌ Не удалось установить соединение'; st.className = 'note err'; }
             }
         };
-
         await pc.setRemoteDescription({ type:'offer', sdp:invite.sdp });
         var ans = await pc.createAnswer();
         await pc.setLocalDescription(ans);
         await waitForICE(pc);
-
         var ansData = { v:1, type:'answer', room:invite.room, slot:invite.slot,
                         from:{id:myId, name:myName}, sdp:pc.localDescription.sdp };
         $('guest-answer-text').value = encodeInvite(ansData);
         $('join-step-1').style.display = 'none';
         $('join-step-2').style.display = 'block';
-        $('guest-status').textContent = '⏳ Ждём хоста... (после его подтверждения откроется чат)';
+        $('guest-status').textContent = '⏳ Ждём хоста...';
         $('guest-status').className = 'note';
-    } catch(err) {
-        showError('Ошибка: ' + err.message);
-        console.error(err);
-    }
+    } catch(err) { showError('Ошибка: ' + err.message); }
 }
-
 function setupGuestDC(dc) {
     dc.onopen = function() {
         closeModal('join-modal');
@@ -1120,29 +1825,30 @@ function setupGuestDC(dc) {
         $('header-code').textContent = roomCode;
         $('messages').innerHTML = '';
         lastRenderedDay = null;
+        lastExportCount = 0;
         if (historyCache.length) renderStoredHistory();
         renderParts();
         setStatus('🟢 Подключено к ' + (guestConn.hostInfo ? guestConn.hostInfo.name : 'хосту'), 'online');
         $('invite-header-btn').style.display = 'none';
+        $('file-btn').style.display = '';
+        updateFileButton();
         flushPending();
     };
     dc.onmessage = function(e) {
-        try { guestOnMessage(JSON.parse(e.data)); } catch(err) { console.warn(err); }
+        try { guestOnMessage(JSON.parse(e.data)); } catch(err){}
     };
-    dc.onclose = function() {
-        setStatus('🔴 Соединение потеряно', 'error');
-    };
+    dc.onclose = function() { setStatus('🔴 Потеряно', 'error'); };
 }
-
 function guestOnMessage(msg) {
     if (msg._mid && seenMsgIds[msg._mid]) return;
     if (msg._mid) seenMsgIds[msg._mid] = Date.now();
-
     if (msg.type === 'msg') {
         if (msg.from && isBlacklisted(msg.from.id)) return;
         addMsg(msg.text, msg.from ? msg.from.name : '?', false, msg.ts, false, msg.from ? msg.from.avatar : null);
         addToHistory({kind:'msg', name: msg.from ? msg.from.name : '?', text: msg.text,
                       isMe:false, t: msg.ts || Date.now(), avatar: msg.from ? msg.from.avatar : null});
+        updateRoomLastMsg(roomCode, msg.text, msg.ts);
+        updateFileButton();
         playNotify();
     } else if (msg.type === 'presence') {
         peers = {};
@@ -1159,23 +1865,30 @@ function guestOnMessage(msg) {
 }
 
 // ============================================================
-//  SEND / RELAY
+//  SEND
 // ============================================================
 function doSend() {
     initAudio();
     var inp = $('msg-input');
     var text = (inp.value || '').trim();
     if (!text) return;
+    inp.value = '';
+    if (inp.blur) inp.blur();
+
+    if (cloud.enabled) {
+        cloudSendMessage(text);
+        return;
+    }
+
     var ts = Date.now();
     var mid = genMsgId();
     seenMsgIds[mid] = ts;
     var msg = { type:'msg', _mid:mid, from:{id:myId, name:getDisplayName(), avatar:getDisplayAvatar()},
                 text:text, ts:ts };
-
     addMsg(text, null, true, ts);
     addToHistory({kind:'msg', name:getDisplayName(), text:text, isMe:true, t:ts, avatar:getDisplayAvatar()});
-    inp.value = '';
-    if (inp.blur) inp.blur();
+    updateRoomLastMsg(roomCode, text, ts);
+    updateFileButton();
 
     if (role === 'host') {
         var data = JSON.stringify(msg);
@@ -1226,15 +1939,13 @@ function renderParts() {
         if (isBlacklisted(id)) continue;
         var s = document.createElement('span');
         s.className = 'participant other' + (peers[id].role === 'host' ? ' host' : '');
-        s.textContent = (peers[id].avatar || '😀') + ' ' + peers[id].name +
-                        (peers[id].role === 'host' ? ' 👑' : '');
+        s.textContent = (peers[id].avatar || '😀') + ' ' + peers[id].name + (peers[id].role === 'host' ? ' 👑' : '');
         (function(pid, pn, pa){
             s.onclick = function() { openUserAction(pid, pn, pa); };
         })(id, peers[id].name, peers[id].avatar);
         box.appendChild(s);
     }
 }
-
 function maybeDaySeparator(ts) {
     var d = new Date(ts);
     var key = d.toDateString();
@@ -1283,18 +1994,15 @@ function renderStoredHistory() {
 }
 
 // ============================================================
-//  DM (через хоста)
+//  DM
 // ============================================================
 var dmPeerId = null, dmPeerName = null, dmPeerAvatar = '😀';
-
 function openDmChat(peerId, peerName, peerAvatar) {
     if (isBlacklisted(peerId)) return showError('В чёрном списке');
     dmPeerId = peerId; dmPeerName = peerName || peerId; dmPeerAvatar = peerAvatar || '😀';
     var m = getDmPeersMap(); m[peerId] = { name: dmPeerName, avatar: dmPeerAvatar }; saveDmPeersMap(m);
     $('dm-title').textContent = dmPeerAvatar + ' ' + dmPeerName;
-    closeModal('user-action-modal');
-    closeModal('dm-list-modal');
-    closeModal('settings-modal');
+    closeModal('user-action-modal'); closeModal('dm-list-modal'); closeModal('settings-modal');
     $('dm-chat-modal').classList.add('visible');
     renderDmMessages();
 }
@@ -1331,9 +2039,7 @@ function sendDm() {
     var m = getDmPeersMap(); m[dmPeerId] = { name: dmPeerName, avatar: dmPeerAvatar }; saveDmPeersMap(m);
     inp.value = ''; if (inp.blur) inp.blur();
     renderDmMessages();
-
     if (role === 'host') {
-        // хост → гость напрямую
         for (var id in hostSlots) {
             var s = hostSlots[id];
             if (s.guestInfo && s.guestInfo.id === dmPeerId && s.dc.readyState === 'open') {
@@ -1344,7 +2050,7 @@ function sendDm() {
         showError('Получатель не в сети');
     } else if (role === 'guest') {
         if (!guestConn || guestConn.dc.readyState !== 'open') return showError('Нет соединения');
-        try { guestConn.dc.send(JSON.stringify(msg)); } catch(e){ showError('Ошибка отправки'); }
+        try { guestConn.dc.send(JSON.stringify(msg)); } catch(e){ showError('Ошибка'); }
     }
 }
 function handleDmIncoming(d) {
@@ -1367,7 +2073,7 @@ function handleDmIncoming(d) {
 }
 
 // ============================================================
-//  USER ACTION / BLACKLIST UI
+//  USER ACTION
 // ============================================================
 var uaPeerId = null, uaPeerName = null, uaPeerAvatar = '😀';
 function openUserAction(id, name, avatar) {
@@ -1384,11 +2090,42 @@ function userActionToggleBlock() {
     closeModal('user-action-modal'); renderParts();
 }
 
-function openBlacklistModal() {
-    closeModal('settings-modal');
-    $('blacklist-modal').classList.add('visible');
-    renderBlacklistItems();
+// ============================================================
+//  SETTINGS UI
+// ============================================================
+function openSettingsModal() { updateSettingsUI(); $('settings-modal').classList.add('visible'); }
+function updateSettingsUI() {
+    var i1 = $('incognito-status'); if (i1) i1.textContent = incognito ? 'Включён' : 'Выключен';
+    var i2 = $('incognito2-status'); if (i2) i2.textContent = incognito2 ? 'Включён' : 'Выключен';
+    var bl = $('blacklist-count');
+    if (bl) { var n = getBlacklist().length; bl.textContent = n ? n + ' ' + plural(n,'чел.','чел.','чел.') : 'Пусто'; }
+    var dm = $('dm-count');
+    if (dm) { var c = getDmThreads().length; dm.textContent = c ? c + ' ' + plural(c,'переписка','переписки','переписок') : 'Нет'; }
 }
+function toggleIncognito() {
+    incognito = !incognito;
+    try { localStorage.setItem('chat-incognito', incognito ? 'on' : 'off'); } catch(e){}
+    updateSettingsUI(); renderParts();
+    if (role === 'host' && !cloud.enabled) hostBroadcastPresence();
+    showError(incognito ? '🥷 Инкогнито вкл' : 'Инкогнито выкл');
+}
+function toggleIncognito2() {
+    if (!incognito2) {
+        incognito2 = true;
+        try { localStorage.setItem('chat-incognito2', 'on'); } catch(e){}
+        historyCache = []; lastRenderedDay = null;
+        if ($('messages')) $('messages').innerHTML = '';
+    } else {
+        incognito2 = false;
+        try { localStorage.removeItem('chat-incognito2'); } catch(e){}
+        loadProfile();
+        if (HISTORY_KEY) { historyCache = loadHistory(); renderStoredHistory(); }
+    }
+    updateSettingsUI(); renderParts();
+    showError(incognito2 ? '👻 Инкогнито 2 вкл' : 'Инкогнито 2 выкл');
+}
+
+function openBlacklistModal() { closeModal('settings-modal'); $('blacklist-modal').classList.add('visible'); renderBlacklistItems(); }
 function renderBlacklistItems() {
     var box = $('blacklist-items'); box.innerHTML = '';
     var bl = getBlacklist(), names = getBlacklistNames();
@@ -1405,7 +2142,6 @@ function renderBlacklistItems() {
         row.appendChild(btn); box.appendChild(row);
     });
 }
-
 function openDmListModal() {
     closeModal('settings-modal');
     $('dm-list-modal').classList.add('visible');
@@ -1424,43 +2160,8 @@ function openDmListModal() {
     });
 }
 
-function updateSettingsUI() {
-    var i1 = $('incognito-status'); if (i1) i1.textContent = incognito ? 'Включён' : 'Выключен';
-    var i2 = $('incognito2-status'); if (i2) i2.textContent = incognito2 ? 'Включён' : 'Выключен';
-    var bl = $('blacklist-count');
-    if (bl) { var n = getBlacklist().length; bl.textContent = n ? n + ' ' + plural(n,'чел.','чел.','чел.') : 'Пусто'; }
-    var dm = $('dm-count');
-    if (dm) { var c = getDmThreads().length; dm.textContent = c ? c + ' ' + plural(c,'переписка','переписки','переписок') : 'Нет'; }
-}
-function openSettingsModal() { updateSettingsUI(); $('settings-modal').classList.add('visible'); }
-
-function toggleIncognito() {
-    incognito = !incognito;
-    try { localStorage.setItem('chat-incognito', incognito ? 'on' : 'off'); } catch(e){}
-    updateSettingsUI(); renderParts(); refreshPresence();
-    showError(incognito ? '🥷 Инкогнито вкл' : 'Инкогнито выкл');
-}
-function toggleIncognito2() {
-    if (!incognito2) {
-        incognito2 = true;
-        try { localStorage.setItem('chat-incognito2', 'on'); } catch(e){}
-        historyCache = []; lastRenderedDay = null;
-        if ($('messages')) $('messages').innerHTML = '';
-    } else {
-        incognito2 = false;
-        try { localStorage.removeItem('chat-incognito2'); } catch(e){}
-        loadProfile();
-        if (HISTORY_KEY) { historyCache = loadHistory(); renderStoredHistory(); }
-    }
-    updateSettingsUI(); renderParts(); refreshPresence();
-    showError(incognito2 ? '👻 Инкогнито 2 вкл' : 'Инкогнито 2 выкл');
-}
-function refreshPresence() {
-    if (role === 'host') hostBroadcastPresence();
-}
-
 // ============================================================
-//  ACCOUNT / PROFILE / EXPORT-IMPORT
+//  ACCOUNT
 // ============================================================
 function openAccountModal() {
     $('acc-avatar').textContent = getDisplayAvatar();
@@ -1472,7 +2173,7 @@ function confirmLogout() { closeModal('account-modal'); $('logout-modal').classL
 function doLogout() {
     try {
         var keys = ['chat-profile','chat-my-id','chat-incognito','chat-incognito2',
-                    'chat-blacklist','chat-blacklist-names','chat-dm-peers'];
+                    'chat-blacklist','chat-blacklist-names','chat-dm-peers','chat-rooms'];
         [localStorage, sessionStorage].forEach(function(st) {
             keys.forEach(function(k){ try { st.removeItem(k); } catch(e){} });
             for (var i = st.length - 1; i >= 0; i--) {
@@ -1510,14 +2211,10 @@ function doImport() {
     try {
         var d = JSON.parse(text);
         if (!d.name) throw new Error('Нет поля name');
-        myName = d.name;
-        myAvatar = d.avatar || '😀';
-        if (d.id) {
-            myId = d.id;
-            try { localStorage.setItem('chat-my-id', myId); } catch(e){}
-        }
+        myName = d.name; myAvatar = d.avatar || '😀';
+        if (d.id) { myId = d.id; try { localStorage.setItem('chat-my-id', myId); } catch(e){} }
         try { dataStore().setItem('chat-profile', JSON.stringify({name:myName, avatar:myAvatar})); } catch(e){}
-        $('import-status').textContent = '✅ Профиль восстановлен';
+        $('import-status').textContent = '✅ Восстановлено';
         $('import-status').className = 'note ok';
         setTimeout(function() { closeModal('import-modal'); showMainMenu(); }, 1000);
     } catch(err) {
@@ -1525,7 +2222,6 @@ function doImport() {
         $('import-status').className = 'note err';
     }
 }
-
 function editProfile() {
     $('edit-profile-name').value = myName;
     renderAvatarPicker('edit-avatar-picker', myAvatar);
@@ -1537,21 +2233,28 @@ function saveEditProfile() {
     var av = document.querySelector('#edit-avatar-picker .avatar-option.selected');
     myName = n; myAvatar = av ? av.dataset.avatar : myAvatar;
     try { dataStore().setItem('chat-profile', JSON.stringify({name:myName, avatar:myAvatar})); } catch(e){}
-    closeModal('profile-modal'); renderParts(); refreshPresence();
+    closeModal('profile-modal'); renderParts();
+    if (role === 'host' && !cloud.enabled) hostBroadcastPresence();
 }
 
 // ============================================================
-//  ROOM EXIT
+//  LEAVE
 // ============================================================
 function leaveRoomCleanup() {
-    if (callActive) endCall();
-    for (var id in hostSlots) {
-        try { hostSlots[id].pc.close(); } catch(e){}
+    stopCloudPolling();
+    if (cloud.enabled) {
+        cloud.enabled = false; cloud.gistId = null; cloud.token = null;
+        cloud.password = null; cloud.cryptoKey = null; cloud.salt = null;
+        cloud.etag = null; cloud.decrypted = {};
     }
+    if (callActive) endCall();
+    for (var id in hostSlots) { try { hostSlots[id].pc.close(); } catch(e){} }
     hostSlots = {}; hostPendingSlot = null;
     if (guestConn) { try { guestConn.pc.close(); } catch(e){} guestConn = null; }
     peers = {}; pendingMessages = [];
     role = null; roomCode = null; HISTORY_KEY = null;
+    lastExportCount = 0;
+    updateFileButton();
 }
 function leaveRoom() {
     leaveRoomCleanup();
@@ -1559,6 +2262,8 @@ function leaveRoom() {
     document.querySelector('h1').style.display = 'flex';
     showMainMenu();
 }
+function confirmClearHistory() { $('confirm-modal').classList.add('visible'); }
+function doClearHistory() { clearHistory(); closeModal('confirm-modal'); addSys('История очищена'); }
 
 // ============================================================
 //  SOUND
@@ -1630,7 +2335,7 @@ document.addEventListener('visibilitychange', function() {
 });
 
 // ============================================================
-//  CALLS (только host↔guest через DC сигналинг)
+//  CALLS
 // ============================================================
 function startCall() {
     if (Object.keys(peers).length === 0) return showError('Нет других участников');
@@ -1746,7 +2451,6 @@ function doOpenBrowser() {
     window.open(raw, '_blank', 'noopener,noreferrer');
     closeModal('browser-modal');
 }
-
 var deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault(); deferredPrompt = e;
@@ -1778,27 +2482,22 @@ function doInstall() {
 }
 
 // ============================================================
-//  CONFIRM CLEAR HISTORY
-// ============================================================
-function confirmClearHistory() { $('confirm-modal').classList.add('visible'); }
-function doClearHistory() { clearHistory(); closeModal('confirm-modal'); addSys('История очищена'); }
-
-// ============================================================
 //  INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     var modals = ['install-modal','confirm-modal','sound-settings-modal','profile-modal',
                   'call-modal','invite-modal','myid-modal','import-modal','export-modal',
                   'account-modal','logout-modal','settings-modal','blacklist-modal',
-                  'user-action-modal','dm-list-modal','browser-modal','join-modal','invite-p2p-modal'];
+                  'user-action-modal','dm-list-modal','browser-modal','join-modal',
+                  'invite-p2p-modal','file-modal','cloud-modal'];
     modals.forEach(function(id) {
         var m = $(id);
         if (m) m.addEventListener('click', function(e){ if (e.target === m) m.classList.remove('visible'); });
     });
-
     var sb = $('sound-btn'); if (sb) sb.textContent = soundEnabled ? '🔊' : '🔇';
     updateSoundButtons();
     updateSettingsUI();
+    updateFileButton();
 
     if (loadProfile()) {
         showMainMenu();
@@ -1810,12 +2509,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 setTimeout(function() {
-    ['profile-name','edit-profile-name','join-input','msg-input','dm-input','browser-url','guest-invite-text','host-answer-text']
+    ['profile-name','edit-profile-name','msg-input','dm-input','browser-url','host-answer-text']
     .forEach(function(id) {
         var e = $(id);
         if (!e) return;
         e.addEventListener('keydown', function(ev) {
-            if (ev.key === 'Enter' && !ev.shiftKey) {
+            if (ev.key === 'Enter' && !ev.shiftKey && ev.target.tagName !== 'TEXTAREA') {
                 ev.preventDefault();
                 if (id === 'profile-name') saveProfile();
                 else if (id === 'edit-profile-name') saveEditProfile();
