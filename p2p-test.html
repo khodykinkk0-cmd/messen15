@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Пуля P2P — тест</title>
+<style>
+  body { font-family: monospace; background: #0a0f1e; color: #e0e6f0;
+         padding: 16px; max-width: 800px; margin: 0 auto; }
+  h1 { color: #ffaa44; font-size: 18px; }
+  h3 { color: #88ddff; font-size: 14px; margin: 12px 0 8px; }
+  .card { background: #0f1722; border: 1px solid #2a3a4a;
+          border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  button { background: #ffaa44; color: #0a0f1e; border: none;
+           border-radius: 8px; padding: 12px 18px; font-size: 14px;
+           font-weight: bold; cursor: pointer; margin: 6px 0; }
+  button.secondary { background: #2a3a4a; color: #c0e0ff; }
+  input, textarea { width: 100%; background: #0a0f1e; color: #e0e6f0;
+                    border: 1px solid #2a3a4a; border-radius: 8px;
+                    padding: 10px; font-family: monospace; font-size: 13px;
+                    box-sizing: border-box; }
+  textarea { resize: vertical; min-height: 100px; word-break: break-all; }
+  #host-chat, #guest-chat { background: #0a0f1e; border: 1px solid #2a3a4a;
+                             border-radius: 8px; padding: 12px;
+                             height: 260px; overflow-y: auto; margin-bottom: 8px; }
+  .msg { padding: 8px 12px; border-radius: 12px; margin: 4px 0; max-width: 78%; }
+  .msg.me { background: #ffaa44; color: #0a0f1e; margin-left: auto; }
+  .msg.them { background: #2a3a4a; }
+  .msg .from { font-size: 11px; opacity: 0.7; font-weight: bold; display: block; }
+  .peer { padding: 4px 10px; background: #1a2a3a; border-radius: 20px;
+          display: inline-block; margin: 3px; font-size: 12px; }
+  .hidden { display: none !important; }
+  .note { color: #889; font-size: 12px; margin: 8px 0; line-height: 1.5; }
+  .err { color: #ff6666; }
+  .ok { color: #44ff88; }
+</style>
+</head>
+<body>
+
+<h1>🚀 Пуля P2P (тест)</h1>
+
+<div class="card">
+  <label>Ваше имя:</label>
+  <input id="my-name" placeholder="Например, Аня" value="Аня">
+</div>
+
+<div id="menu" class="card">
+  <button onclick="startHost()">🆕 Создать комнату</button>
+  <button class="secondary" onclick="startGuest()">🔗 Присоединиться</button>
+</div>
+
+<!-- HOST -->
+<div id="host-view" class="hidden">
+  <div class="card">
+    <h3>Комната: <span id="host-room-code" style="color:#ffdd88;"></span></h3>
+    <p class="note">Вы — хост. Приглашайте гостей по одному.</p>
+    <button onclick="hostGenerateInvite()">📤 Сгенерировать приглашение</button>
+  </div>
+
+  <div id="host-invite-panel" class="card hidden">
+    <div class="note">1. Скопируйте приглашение и отправьте другу:</div>
+    <textarea id="host-invite-text" readonly></textarea>
+    <button onclick="copyField('host-invite-text', this)">📋 Скопировать</button>
+
+    <div class="note" style="margin-top:16px;">2. Вставьте ответ, который пришлёт друг:</div>
+    <textarea id="host-answer-text" placeholder="PULYA1:..."></textarea>
+    <button onclick="hostAcceptAnswer()">✅ Подключить</button>
+  </div>
+
+  <div class="card">
+    <h3>Участники (<span id="host-peer-count">0</span>)</h3>
+    <div id="host-peers"></div>
+  </div>
+
+  <div class="card">
+    <div id="host-chat"></div>
+    <input id="host-msg-input" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')hostSend()">
+    <button onclick="hostSend()">➤ Отправить</button>
+  </div>
+</div>
+
+<!-- GUEST -->
+<div id="guest-view" class="hidden">
+  <div class="card" id="guest-step-1">
+    <h3>Вставьте приглашение от хоста:</h3>
+    <textarea id="guest-invite-text" placeholder="PULYA1:..."></textarea>
+    <button onclick="guestProcessInvite()">Далее</button>
+  </div>
+
+  <div class="card hidden" id="guest-step-2">
+    <h3>Скопируйте ответ и отправьте хосту:</h3>
+    <textarea id="guest-answer-text" readonly></textarea>
+    <button onclick="copyField('guest-answer-text', this)">📋 Скопировать</button>
+    <p class="note" id="guest-status">Ожидание подключения...</p>
+  </div>
+
+  <div class="hidden" id="guest-connected">
+    <div class="card">
+      <h3>Комната: <span id="guest-room-code" style="color:#ffdd88;"></span></h3>
+      <div class="note ok" id="guest-conn-status">🟢 Подключено</div>
+    </div>
+    <div class="card">
+      <h3>Участники (<span id="guest-peer-count">0</span>)</h3>
+      <div id="guest-peers"></div>
+    </div>
+    <div class="card">
+      <div id="guest-chat"></div>
+      <input id="guest-msg-input" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')guestSend()">
+      <button onclick="guestSend()">➤ Отправить</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+<script>
+'use strict';
+
+// ================= STATE =================
+var myId = localStorage.getItem('pulya-peer-id') || ('peer_' + Math.random().toString(36).slice(2, 10));
+localStorage.setItem('pulya-peer-id', myId);
+
+var myName = 'Аня';
+var role = null;
+var roomCode = null;
+
+var hostSlots = {};        // slotId -> { pc, dc, slotId, state, guestInfo }
+var hostPendingSlot = null;
+
+var guestConn = null;      // { pc, dc, hostInfo, slot }
+var seenMsgIds = {};
+
+// ================= UTIL =================
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function genRoomCode() {
+  var words = ['fox','moon','star','sun','wolf','cat','bird','fire','ice',
+               'leaf','tree','rock','wave','snow','rain','wind','gold','blue','red'];
+  var w1 = words[Math.floor(Math.random() * words.length)];
+  var w2 = words[Math.floor(Math.random() * words.length)];
+  var n = 10 + Math.floor(Math.random() * 90);
+  return w1 + '-' + w2 + '-' + n;
+}
+function genMsgId() {
+  return myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+}
+function copyField(id, btn) {
+  var ta = $(id);
+  var text = ta.value || ta.textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    var old = btn.textContent;
+    btn.textContent = '✅ Скопировано!';
+    setTimeout(function() { btn.textContent = old; }, 1500);
+  }).catch(function() {
+    ta.select();
+    document.execCommand('copy');
+  });
+}
+
+// ================= CODEC =================
+function encodeInvite(obj) {
+  var json = JSON.stringify(obj);
+  if (typeof pako === 'undefined') {
+    var bytes = new TextEncoder().encode(json);
+    var binary = '';
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return 'PULYA1P:' + btoa(binary);
+  }
+  var compressed = pako.deflate(json, { level: 9 });
+  var b = '';
+  for (var j = 0; j < compressed.length; j++) b += String.fromCharCode(compressed[j]);
+  return 'PULYA1:' + btoa(b);
+}
+function decodeInvite(str) {
+  str = String(str || '').trim();
+  var json;
+  if (str.indexOf('PULYA1:') === 0) {
+    if (typeof pako === 'undefined') throw new Error('pako не загружен');
+    var binary = atob(str.slice(7));
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    json = pako.inflate(bytes, { to: 'string' });
+  } else if (str.indexOf('PULYA1P:') === 0) {
+    var b2 = atob(str.slice(8));
+    var bytes2 = new Uint8Array(b2.length);
+    for (var k = 0; k < b2.length; k++) bytes2[k] = b2.charCodeAt(k);
+    json = new TextDecoder().decode(bytes2);
+  } else {
+    throw new Error('Неверный формат кода. Ожидается PULYA1:...');
+  }
+  return JSON.parse(json);
+}
+
+// ================= ICE =================
+function waitForICE(pc, timeoutMs) {
+  timeoutMs = timeoutMs || 5000;
+  return new Promise(function(resolve) {
+    if (pc.iceGatheringState === 'complete') return resolve();
+    var timer = setTimeout(resolve, timeoutMs);
+    pc.addEventListener('icegatheringstatechange', function() {
+      if (pc.iceGatheringState === 'complete') {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+  });
+}
+
+var RTC_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' }
+  ]
+};
+
+// ================= HOST =================
+function startHost() {
+  myName = ($('my-name').value || 'Хост').trim();
+  role = 'host';
+  roomCode = genRoomCode();
+  $('menu').classList.add('hidden');
+  $('host-view').classList.remove('hidden');
+  $('host-room-code').textContent = roomCode;
+  console.log('[host] room:', roomCode);
+}
+
+async function hostGenerateInvite() {
+  // Discard unfinished previous invite
+  if (hostPendingSlot && hostPendingSlot.state === 'offered') {
+    try { hostPendingSlot.pc.close(); } catch(e) {}
+    delete hostSlots[hostPendingSlot.slotId];
+    hostPendingSlot = null;
+  }
+
+  $('host-invite-panel').classList.remove('hidden');
+  $('host-invite-text').value = 'Генерация...';
+  $('host-answer-text').value = '';
+
+  try {
+    var slotId = 'slot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    var pc = new RTCPeerConnection(RTC_CONFIG);
+    var dc = pc.createDataChannel('chat', { ordered: true });
+
+    var slot = { pc: pc, dc: dc, slotId: slotId, state: 'offered', guestInfo: null };
+    hostSlots[slotId] = slot;
+    hostPendingSlot = slot;
+
+    setupHostDC(slot);
+
+    var offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitForICE(pc);
+
+    var invite = {
+      v: 1, type: 'offer',
+      room: roomCode,
+      slot: slotId,
+      from: { id: myId, name: myName },
+      sdp: pc.localDescription.sdp
+    };
+
+    $('host-invite-text').value = encodeInvite(invite);
+    console.log('[host] invite length:', $('host-invite-text').value.length);
+  } catch (err) {
+    $('host-invite-text').value = 'Ошибка: ' + err.message;
+    console.error('[host]', err);
+  }
+}
+
+async function hostAcceptAnswer() {
+  var text = $('host-answer-text').value.trim();
+  if (!text) return alert('Вставьте ответ гостя');
+  if (!hostPendingSlot) return alert('Сначала сгенерируйте приглашение');
+
+  try {
+    var answer = decodeInvite(text);
+    if (answer.type !== 'answer') throw new Error('Это не ответ');
+    if (answer.slot !== hostPendingSlot.slotId) throw new Error('Ответ от другого приглашения');
+
+    await hostPendingSlot.pc.setRemoteDescription({ type: 'answer', sdp: answer.sdp });
+    hostPendingSlot.guestInfo = answer.from;
+    hostPendingSlot.state = 'connecting';
+
+    $('host-answer-text').value = '';
+    $('host-invite-panel').classList.add('hidden');
+    console.log('[host] answer applied, waiting for DC...');
+  } catch (err) {
+    alert('Ошибка: ' + err.message);
+    console.error('[host]', err);
+  }
+}
+
+function setupHostDC(slot) {
+  slot.dc.onopen = function() {
+    slot.state = 'connected';
+    if (hostPendingSlot === slot) hostPendingSlot = null;
+    hostSys((slot.guestInfo ? slot.guestInfo.name : 'Гость') + ' присоединился');
+    hostBroadcastPresence();
+  };
+  slot.dc.onmessage = function(e) {
+    try { hostOnMessage(JSON.parse(e.data), slot); }
+    catch (err) { console.warn('[host] parse:', err); }
+  };
+  slot.dc.onclose = function() {
+    var nm = slot.guestInfo ? slot.guestInfo.name : 'Гость';
+    slot.state = 'closed';
+    delete hostSlots[slot.slotId];
+    hostSys(nm + ' отключился');
+    hostBroadcastPresence();
+  };
+  slot.pc.oniceconnectionstatechange = function() {
+    console.log('[host] ICE:', slot.pc.iceConnectionState);
+  };
+}
+
+function hostOnMessage(msg, fromSlot) {
+  if (msg._mid && seenMsgIds[msg._mid]) return;
+  if (msg._mid) seenMsgIds[msg._mid] = Date.now();
+
+  if (msg.type === 'msg') {
+    hostChat(msg.from ? msg.from.name : '?', msg.text, false);
+    var data = JSON.stringify(msg);
+    for (var id in hostSlots) {
+      var s = hostSlots[id];
+      if (s.slotId === fromSlot.slotId) continue;
+      if (s.state === 'connected' && s.dc.readyState === 'open') {
+        try { s.dc.send(data); } catch(e){}
+      }
+    }
+  }
+}
+
+function hostBroadcastPresence() {
+  var peers = [{ id: myId, name: myName, role: 'host' }];
+  for (var id in hostSlots) {
+    var s = hostSlots[id];
+    if (s.state === 'connected' && s.guestInfo) {
+      peers.push({ id: s.guestInfo.id, name: s.guestInfo.name, role: 'guest' });
+    }
+  }
+  var data = JSON.stringify({ type: 'presence', peers: peers, room: roomCode });
+  for (var id2 in hostSlots) {
+    var s2 = hostSlots[id2];
+    if (s2.state === 'connected' && s2.dc.readyState === 'open') {
+      try { s2.dc.send(data); } catch(e){}
+    }
+  }
+  var list = $('host-peers');
+  list.innerHTML = '';
+  peers.forEach(function(p) {
+    list.appendChild(el('span', 'peer', (p.role === 'host' ? '👑 ' : '') + p.name));
+  });
+  $('host-peer-count').textContent = peers.length;
+}
+
+function hostChat(fromName, text, isMe) {
+  var chat = $('host-chat');
+  var d = el('div', 'msg ' + (isMe ? 'me' : 'them'));
+  if (!isMe) d.appendChild(el('span', 'from', fromName));
+  d.appendChild(document.createTextNode(text));
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+function hostSys(text) {
+  var chat = $('host-chat');
+  var d = el('div', 'msg them');
+  d.style.textAlign = 'center';
+  d.style.fontStyle = 'italic';
+  d.style.opacity = '0.6';
+  d.style.maxWidth = '100%';
+  d.textContent = text;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hostSend() {
+  var inp = $('host-msg-input');
+  var text = (inp.value || '').trim();
+  if (!text) return;
+  var ts = Date.now();
+  var mid = genMsgId();
+  seenMsgIds[mid] = ts;
+  var msg = { type:'msg', _mid:mid, from:{id:myId, name:myName}, text:text, ts:ts };
+  hostChat('Вы', text, true);
+  inp.value = '';
+  var data = JSON.stringify(msg);
+  for (var id in hostSlots) {
+    var s = hostSlots[id];
+    if (s.state === 'connected' && s.dc.readyState === 'open') {
+      try { s.dc.send(data); } catch(e){}
+    }
+  }
+}
+
+// ================= GUEST =================
+function startGuest() {
+  myName = ($('my-name').value || 'Гость').trim();
+  role = 'guest';
+  $('menu').classList.add('hidden');
+  $('guest-view').classList.remove('hidden');
+  $('guest-step-1').classList.remove('hidden');
+  $('guest-step-2').classList.add('hidden');
+  $('guest-connected').classList.add('hidden');
+}
+
+async function guestProcessInvite() {
+  var text = $('guest-invite-text').value.trim();
+  if (!text) return alert('Вставьте приглашение');
+
+  try {
+    var invite = decodeInvite(text);
+    if (invite.type !== 'offer') throw new Error('Это не приглашение');
+
+    roomCode = invite.room;
+
+    var pc = new RTCPeerConnection(RTC_CONFIG);
+    guestConn = { pc: pc, hostInfo: invite.from, slot: invite.slot };
+
+    pc.ondatachannel = function(e) {
+      guestConn.dc = e.channel;
+      setupGuestDC(e.channel);
+    };
+    pc.oniceconnectionstatechange = function() {
+      console.log('[guest] ICE:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        var st = $('guest-status');
+        if (st) { st.textContent = '❌ Не удалось установить соединение'; st.className = 'note err'; }
+      }
+    };
+
+    await pc.setRemoteDescription({ type: 'offer', sdp: invite.sdp });
+    var answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await waitForICE(pc);
+
+    var answerData = {
+      v: 1, type: 'answer',
+      room: invite.room,
+      slot: invite.slot,
+      from: { id: myId, name: myName },
+      sdp: pc.localDescription.sdp
+    };
+
+    $('guest-answer-text').value = encodeInvite(answerData);
+    $('guest-step-1').classList.add('hidden');
+    $('guest-step-2').classList.remove('hidden');
+    $('guest-status').textContent = '⏳ Ждём, пока хост вставит ваш ответ...';
+    console.log('[guest] answer generated');
+  } catch (err) {
+    alert('Ошибка: ' + err.message);
+    console.error('[guest]', err);
+  }
+}
+
+function setupGuestDC(dc) {
+  dc.onopen = function() {
+    $('guest-step-2').classList.add('hidden');
+    $('guest-connected').classList.remove('hidden');
+    $('guest-room-code').textContent = roomCode;
+    $('guest-conn-status').textContent =
+      '🟢 Подключено к ' + (guestConn.hostInfo ? guestConn.hostInfo.name : 'хосту');
+  };
+  dc.onmessage = function(e) {
+    try { guestOnMessage(JSON.parse(e.data)); }
+    catch (err) { console.warn('[guest] parse:', err); }
+  };
+  dc.onclose = function() {
+    var st = $('guest-conn-status');
+    if (st) { st.textContent = '🔴 Соединение потеряно'; st.className = 'note err'; }
+  };
+}
+
+function guestOnMessage(msg) {
+  if (msg._mid && seenMsgIds[msg._mid]) return;
+  if (msg._mid) seenMsgIds[msg._mid] = Date.now();
+
+  if (msg.type === 'msg') {
+    var isMe = msg.from && msg.from.id === myId;
+    guestChat(msg.from ? msg.from.name : '?', msg.text, isMe);
+  } else if (msg.type === 'presence') {
+    var list = $('guest-peers');
+    list.innerHTML = '';
+    (msg.peers || []).forEach(function(p) {
+      list.appendChild(el('span', 'peer', (p.role === 'host' ? '👑 ' : '') + p.name));
+    });
+    $('guest-peer-count').textContent = (msg.peers || []).length;
+  }
+}
+
+function guestChat(fromName, text, isMe) {
+  var chat = $('guest-chat');
+  var d = el('div', 'msg ' + (isMe ? 'me' : 'them'));
+  if (!isMe) d.appendChild(el('span', 'from', fromName));
+  d.appendChild(document.createTextNode(text));
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function guestSend() {
+  if (!guestConn || !guestConn.dc || guestConn.dc.readyState !== 'open') {
+    return alert('Нет соединения с хостом');
+  }
+  var inp = $('guest-msg-input');
+  var text = (inp.value || '').trim();
+  if (!text) return;
+  var ts = Date.now();
+  var mid = genMsgId();
+  seenMsgIds[mid] = ts;
+  var msg = { type:'msg', _mid:mid, from:{id:myId, name:myName}, text:text, ts:ts };
+  try {
+    guestConn.dc.send(JSON.stringify(msg));
+    guestChat('Вы', text, true);
+    inp.value = '';
+  } catch (err) { alert('Ошибка: ' + err.message); }
+}
+
+// ================= INIT =================
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('[app] peerId:', myId, '| pako:', typeof pako !== 'undefined');
+});
+</script>
+</body>
+</html>
